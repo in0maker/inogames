@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>inogames | Oyun Dünyası</title>
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary: #ff4757;
+            --secondary: #2f3542;
+            --accent: #70a1ff;
+            --bg: #1e2124;
+            --card-bg: #2f3542;
+        }
+
+        body {
+            font-family: 'Montserrat', sans-serif;
+            background-color: var(--bg);
+            color: white;
+            margin: 0;
+            display: flex;
+            flex-direction: column;
+            min-height: 100vh;
+        }
+
+        .navbar {
+            background: var(--secondary);
+            padding: 15px 5%;
+            text-align: center;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+            position: sticky;
+            top: 0;
+            z-index: 1000;
+        }
+
+        .logo-container h2 { margin: 0; color: var(--primary); letter-spacing: 3px; }
+
+        .main-container { padding: 40px 5%; flex: 1; }
+
+        .game-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+            gap: 30px;
+        }
+
+        .game-card {
+            background: var(--card-bg);
+            border-radius: 15px;
+            overflow: hidden;
+            text-decoration: none;
+            color: white;
+            transition: transform 0.3s ease;
+            border-bottom: 4px solid transparent;
+            display: block;
+        }
+
+        .game-card:hover {
+            transform: translateY(-8px);
+            border-color: var(--primary);
+        }
+
+        .game-cover {
+            width: 100%;
+            height: 200px;
+            object-fit: cover;
+            display: block;
+        }
+
+        .game-info { padding: 15px; text-align: center; }
+        .game-info h3 { margin: 0; font-size: 1.1rem; }
+        .game-genre { font-size: 0.8rem; color: #a4b0be; margin-top: 5px; }
+
+        .about-section {
+            background: #262c38;
+            padding: 40px 5%;
+            border-top: 4px solid var(--primary);
+            text-align: center;
+        }
+
+        footer { background: var(--secondary); padding: 20px; text-align: center; font-size: 0.8rem; opacity: 0.8; }
+    </style>
+</head>
+<body>
+
+    <nav class="navbar">
+        <div class="logo-container"><h2>inogames</h2></div>
+    </nav>
+
+    <div class="main-container">
+        <div class="game-grid">
+		         
+			<a href="Oyunlarım/Uno/index.html" class="game-card">
+                <img src="Images/Uno.png" alt="Uno" class="game-cover">
+                <div class="game-info">
+                    <h3>Uno</h3>
+                    <p class="game-genre">Kart Oyunu</p>
+                </div>
+            </a>
+
+            <a href="Oyunlarım/Blocks Blast/index.html" class="game-card">
+                <img src="Images/Blocks Blast.png" alt="Blocks Blast" class="game-cover">
+                <div class="game-info">
+                    <h3>Blocks Blast</h3>
+                    <p class="game-genre">Bulmaca</p>
+                </div>
+            </a>
+
+
+            <a href="Oyunlarım/Hafiza Ritmi/index.html" class="game-card">
+                <img src="Images/Hafiza Ritmi.png" alt="Hafıza Ritmi" class="game-cover">
+                <div class="game-info">
+                    <h3>Hafıza Ritmi</h3>
+                    <p class="game-genre">Zeka</p>
+                </div>
+            </a>
+
+            <a href="Oyunlarım/Kafa Topu/index.html" class="game-card">
+                <img src="Images/Kafa Topu.png" alt="Kafa Topu" class="game-cover">
+                <div class="game-info">
+                    <h3>Kafa Topu</h3>
+                    <p class="game-genre">Spor</p>
+                </div>
+            </a>
+			
+		<a href="Oyunlarım/Galactic Terminal/index.html" class="game-card">
+                <img src="Images/Galactic Terminal.png" alt="Galactic Terminal" class="game-cover">
+                <div class="game-info">
+                    <h3>Galactic Terminal</h3>
+                    <p class="game-genre">Bilim Kurgu</p>
+                </div>
+            </a>
+
+            <a href="Oyunlarım/F1 Race/index.html" class="game-card">
+                <img src="Images/F1 Race.png" alt="F1 Race" class="game-cover">
+                <div class="game-info">
+                    <h3>F1 Race</h3>
+                    <p class="game-genre">Yarış</p>
+                </div>
+            </a>
+			
+			<a href="Oyunlarım/Tower Defence/index.html" class="game-card">
+                <img src="Images/Tower Defence.png" alt="Tower Defence" class="game-cover">
+                <div class="game-info">
+                    <h3>Tower Defence</h3>
+                    <p class="game-genre">Strateji</p>
+                </div>
+            </a>
+            
+            <a href="Oyunlarım/99 Nights/index.html" class="game-card">
+                <img src="Images/99 Nights.png" alt="99 Nights" class="game-cover">
+                <div class="game-info">
+                    <h3>99 Nights</h3>
+                    <p class="game-genre">Aksiyon</p>
+                </div>
+            </a>
+
+            <a href="Oyunlarım/Backrooms/index.html" class="game-card">
+                <img src="Images/Backrooms.png" alt="Backrooms" class="game-cover">
+                <div class="game-info">
+                    <h3>Backrooms</h3>
+                    <p class="game-genre">Korku</p>
+                </div>
+            </a>
+
+            <a href="Oyunlarım/Obby/index.html" class="game-card">
+                <img src="Images/Obby.png" alt="Obby" class="game-cover">
+                <div class="game-info">
+                    <h3>Obby</h3>
+                    <p class="game-genre">Platform</p>
+                </div>
+            </a>
+
+            <a href="Oyunlarım/Pokemon/index.html" class="game-card">
+                <img src="Images/Pokemon.png" alt="Pokemon" class="game-cover">
+                <div class="game-info">
+                    <h3>Pokemon</h3>
+                    <p class="game-genre">RPG</p>
+                </div>
+            </a>
+
+            <a href="Oyunlarım/Run Dino Run/index.html" class="game-card">
+                <img src="Images/Run Dino Run.png" alt="Run Dino Run" class="game-cover">
+                <div class="game-info">
+                    <h3>Run Dino Run</h3>
+                    <p class="game-genre">Sonsuz Koşu</p>
+                </div>
+            </a>
+
+            
+
+        </div>
+    </div>
+
+    <section class="about-section">
+        <h2>👥 Geliştirici Ekibi</h2>
+        <p>Deniz Rüzgar Yıldız • Atilla Kaan Demir • Mehmet Pars Haytoğlu</p>
+        <p>Kurum: <strong>inomaker Robotik Kodlama Atölyesi</strong></p>
+    </section>
+
+    <footer>
+        <p>© 2026 inogames | Tüm Hakları Saklıdır.</p>
+    </footer>
+
+</body>
+</html>
