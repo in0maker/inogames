@@ -4,6 +4,13 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>inogames | World of Games</title>
+    
+    <meta name="description" content="The digital world of next-generation game developers. Discover games developed by inomaker Robotics Coding students.">
+    <meta property="og:title" content="inogames | World of Games">
+    <meta property="og:description" content="The digital world of next-generation game developers. Play games designed by inomaker students!">
+    <meta property="og:image" content="Images/og-cover-photo.jpg"> <meta property="og:url" content="https://inomakeratolyesi.github.io/inogames/">
+    <meta property="og:type" content="website">
+    <meta name="twitter:card" content="summary_large_image">
     <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;700;800&display=swap" rel="stylesheet">
     <style>
         :root {
@@ -113,7 +120,7 @@
         .section-title {
             font-size: 2rem;
             font-weight: 1000;
-            margin-bottom: 40px;
+            margin-bottom: 30px;
             text-align: center;
             letter-spacing: 2px;
             text-transform: uppercase;
@@ -121,6 +128,43 @@
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
         }
+
+        /* 2. Dynamic Filtering Buttons CSS Start */
+        .filter-container {
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+            margin-bottom: 40px;
+            flex-wrap: wrap;
+        }
+
+        .filter-btn {
+            background: var(--card-bg);
+            color: var(--text-muted);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            padding: 10px 22px;
+            border-radius: 30px;
+            font-family: 'Montserrat', sans-serif;
+            font-weight: 600;
+            font-size: 0.9rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .filter-btn:hover, .filter-btn.active {
+            background: var(--primary);
+            color: #ffffff;
+            border-color: var(--primary);
+            box-shadow: 0 5px 15px var(--primary-glow);
+            transform: translateY(-2px);
+        }
+
+        .game-card.hide {
+            display: none !important;
+        }
+        /* Dynamic Filtering CSS End */
 
         .game-grid {
             display: grid;
@@ -338,19 +382,28 @@
 
     <div class="main-container" id="games">
         <h2 class="section-title">Our Games</h2>
+
+        <div class="filter-container">
+            <button class="filter-btn active" data-filter="all">All</button>
+            <button class="filter-btn" data-filter="adventure">Action & Adventure</button>
+            <button class="filter-btn" data-filter="sports">Sports & Racing</button>
+            <button class="filter-btn" data-filter="puzzle">Puzzle & Brain</button>
+            <button class="filter-btn" data-filter="horror">Horror</button>
+            <button class="filter-btn" data-filter="casual">Casual & Fun</button>
+        </div>
         <div class="game-grid">
-                 
-            <a href="OurGames/Uno/index.html" class="game-card">
+            
+            <a href="OurGames/Backrooms/index.html" class="game-card" data-category="horror">
                 <div class="cover-wrapper">
-                    <img src="Images/Uno.png" alt="Uno" class="game-cover">
+                    <img src="Images/Backrooms.png" alt="Backrooms" class="game-cover">
                 </div>
                 <div class="game-info">
-                    <h3>Uno</h3>
-                    <p class="game-genre">Card Game</p>
+                    <h3>Backrooms</h3>
+                    <p class="game-genre">Horror</p>
                 </div>
             </a>
 
-            <a href="OurGames/Blocks Blast/index.html" class="game-card">
+            <a href="OurGames/Blocks Blast/index.html" class="game-card" data-category="puzzle">
                 <div class="cover-wrapper">
                     <img src="Images/Blocks Blast.png" alt="Blocks Blast" class="game-cover">
                 </div>
@@ -360,117 +413,7 @@
                 </div>
             </a>
 
-            <a href="OurGames/Memory Rhythm/index.html" class="game-card">
-                <div class="cover-wrapper">
-                    <img src="Images/Memory Rhythm.png" alt="Memory Rhythm" class="game-cover">
-                </div>
-                <div class="game-info">
-                    <h3>Memory Rhythm</h3>
-                    <p class="game-genre">Brain Game</p>
-                </div>
-            </a>
-
-            <a href="OurGames/Handy Smash/index.html" class="game-card">
-                <div class="cover-wrapper">
-                    <img src="Images/Handy Smash.png" alt="Head Ball" class="game-cover">
-                </div>
-                <div class="game-info">
-                    <h3>Handy Smash</h3>
-                    <p class="game-genre">Sports</p>
-                </div>
-            </a>
-			
-            <a href="OurGames/Basketball/index.html" class="game-card">
-                <div class="cover-wrapper">
-                    <img src="Images/Basketball.png" alt="Basketball" class="game-cover">
-                </div>
-                <div class="game-info">
-                    <h3>Basketball</h3>
-                    <p class="game-genre">Sports</p>
-                </div>
-            </a>
-
-            <a href="OurGames/Bird Basketball/index.html" class="game-card">
-                <div class="cover-wrapper">
-                    <img src="Images/Bird Basketball.png" alt="Bird Basketball" class="game-cover">
-                </div>
-                <div class="game-info">
-                    <h3>Bird Basketball</h3>
-                    <p class="game-genre">Sports</p>
-                </div>
-            </a>
-			
-			<a href="OurGames/Clicker/index.html" class="game-card">
-                <div class="cover-wrapper">
-                    <img src="Images/Clicker.png" alt="Clicker" class="game-cover">
-                </div>
-                <div class="game-info">
-                    <h3>Clicker</h3>
-                    <p class="game-genre">Mouse Game</p>
-                </div>
-            </a>
-
-			<a href="OurGames/Rocket Flight/index.html" class="game-card">
-                <div class="cover-wrapper">
-                    <img src="Images/Rocket Flight.png" alt="Rocket Flight" class="game-cover">
-                </div>
-                <div class="game-info">
-                    <h3>Rocket Flight</h3>
-                    <p class="game-genre">Mouse Game</p>
-                </div>
-            </a>	
-
-			<a href="OurGames/Square Pass/index.html" class="game-card">
-                <div class="cover-wrapper">
-                    <img src="Images/Square Pass.png" alt="Square Pass" class="game-cover">
-                </div>
-                <div class="game-info">
-                    <h3>Square Pass</h3>
-                    <p class="game-genre">Mouse Game</p>
-                </div>
-            </a>			
-			
-            <a href="OurGames/Galactic Terminal/index.html" class="game-card">
-                <div class="cover-wrapper">
-                    <img src="Images/Galactic Terminal.png" alt="Galactic Terminal" class="game-cover">
-                </div>
-                <div class="game-info">
-                    <h3>Galactic Terminal</h3>
-                    <p class="game-genre">Sci-Fi</p>
-                </div>
-            </a>
-
-            <a href="OurGames/Gario/index.html" class="game-card">
-                <div class="cover-wrapper">
-                    <img src="Images/Gario.png" alt="Gario" class="game-cover">
-                </div>
-                <div class="game-info">
-                    <h3>Gario</h3>
-                    <p class="game-genre">Platformer</p>
-                </div>
-            </a>
-			
-            <a href="OurGames/F1 Race/index.html" class="game-card">
-                <div class="cover-wrapper">
-                    <img src="Images/F1 Race.png" alt="F1 Race" class="game-cover">
-                </div>
-                <div class="game-info">
-                    <h3>F1 Race</h3>
-                    <p class="game-genre">Racing</p>
-                </div>
-            </a>
-            
-            <a href="OurGames/Tower Defence/index.html" class="game-card">
-                <div class="cover-wrapper">
-                    <img src="Images/Tower Defence.png" alt="Tower Defence" class="game-cover">
-                </div>
-                <div class="game-info">
-                    <h3>Tower Defence</h3>
-                    <p class="game-genre">Strategy</p>
-                </div>
-            </a>
-            
-            <a href="OurGames/99 Nights/index.html" class="game-card">
+            <a href="OurGames/99 Nights/index.html" class="game-card" data-category="adventure">
                 <div class="cover-wrapper">
                     <img src="Images/99 Nights.png" alt="99 Nights" class="game-cover">
                 </div>
@@ -480,17 +423,97 @@
                 </div>
             </a>
 
-            <a href="OurGames/Backrooms/index.html" class="game-card">
+            <a href="OurGames/Handy Smash/index.html" class="game-card" data-category="sports">
                 <div class="cover-wrapper">
-                    <img src="Images/Backrooms.png" alt="Backrooms" class="game-cover">
+                    <img src="Images/Handy Smash.png" alt="Handy Smash" class="game-cover">
                 </div>
                 <div class="game-info">
-                    <h3>Backrooms</h3>
-                    <p class="game-genre">Horror</p>
+                    <h3>Handy Smash</h3>
+                    <p class="game-genre">Sports</p>
                 </div>
             </a>
-			
-			<a href="OurGames/Bunker Monitoring/index.html" class="game-card">
+
+            <a href="OurGames/Clicker/index.html" class="game-card" data-category="casual">
+                <div class="cover-wrapper">
+                    <img src="Images/Clicker.png" alt="Clicker" class="game-cover">
+                </div>
+                <div class="game-info">
+                    <h3>Clicker</h3>
+                    <p class="game-genre">Mouse Game</p>
+                </div>
+            </a>
+
+            <a href="OurGames/Rocket Flight/index.html" class="game-card" data-category="casual">
+                <div class="cover-wrapper">
+                    <img src="Images/Rocket Flight.png" alt="Rocket Flight" class="game-cover">
+                </div>
+                <div class="game-info">
+                    <h3>Rocket Flight</h3>
+                    <p class="game-genre">Mouse Game</p>
+                </div>
+            </a>
+
+            <a href="OurGames/Memory Rhythm/index.html" class="game-card" data-category="puzzle">
+                <div class="cover-wrapper">
+                    <img src="Images/Memory Rhythm.png" alt="Memory Rhythm" class="game-cover">
+                </div>
+                <div class="game-info">
+                    <h3>Memory Rhythm</h3>
+                    <p class="game-genre">Brain Game</p>
+                </div>
+            </a>
+
+            <a href="OurGames/Bird Basketball/index.html" class="game-card" data-category="sports">
+                <div class="cover-wrapper">
+                    <img src="Images/Bird Basketball.png" alt="Bird Basketball" class="game-cover">
+                </div>
+                <div class="game-info">
+                    <h3>Bird Basketball</h3>
+                    <p class="game-genre">Sports</p>
+                </div>
+            </a>
+
+            <a href="OurGames/Galactic Terminal/index.html" class="game-card" data-category="adventure">
+                <div class="cover-wrapper">
+                    <img src="Images/Galactic Terminal.png" alt="Galactic Terminal" class="game-cover">
+                </div>
+                <div class="game-info">
+                    <h3>Galactic Terminal</h3>
+                    <p class="game-genre">Sci-Fi</p>
+                </div>
+            </a>
+
+            <a href="OurGames/Gario/index.html" class="game-card" data-category="adventure">
+                <div class="cover-wrapper">
+                    <img src="Images/Gario.png" alt="Gario" class="game-cover">
+                </div>
+                <div class="game-info">
+                    <h3>Gario</h3>
+                    <p class="game-genre">Platformer</p>
+                </div>
+            </a>
+
+            <a href="OurGames/F1 Race/index.html" class="game-card" data-category="sports">
+                <div class="cover-wrapper">
+                    <img src="Images/F1 Race.png" alt="F1 Race" class="game-cover">
+                </div>
+                <div class="game-info">
+                    <h3>F1 Race</h3>
+                    <p class="game-genre">Racing</p>
+                </div>
+            </a>
+
+            <a href="OurGames/Tower Defence/index.html" class="game-card" data-category="adventure">
+                <div class="cover-wrapper">
+                    <img src="Images/Tower Defence.png" alt="Tower Defence" class="game-cover">
+                </div>
+                <div class="game-info">
+                    <h3>Tower Defence</h3>
+                    <p class="game-genre">Strategy</p>
+                </div>
+            </a>
+
+            <a href="OurGames/Bunker Monitoring/index.html" class="game-card" data-category="horror">
                 <div class="cover-wrapper">
                     <img src="Images/Bunker Monitoring.png" alt="Bunker Monitoring" class="game-cover">
                 </div>
@@ -500,17 +523,27 @@
                 </div>
             </a>
 			
-            <a href="OurGames/Pokemon/index.html" class="game-card">
+			<a href="OurGames/Uno/index.html" class="game-card" data-category="casual">
                 <div class="cover-wrapper">
-                    <img src="Images/Pokemon.png" alt="Pokemon" class="game-cover">
+                    <img src="Images/Uno.png" alt="Uno" class="game-cover">
                 </div>
                 <div class="game-info">
-                    <h3>Pokemon</h3>
-                    <p class="game-genre">RPG</p>
+                    <h3>Uno</h3>
+                    <p class="game-genre">Card Game</p>
                 </div>
             </a>
-			
-			<a href="OurGames/Stickman/index.html" class="game-card">
+
+            <a href="OurGames/Basketball/index.html" class="game-card" data-category="sports">
+                <div class="cover-wrapper">
+                    <img src="Images/Basketball.png" alt="Basketball" class="game-cover">
+                </div>
+                <div class="game-info">
+                    <h3>Basketball</h3>
+                    <p class="game-genre">Sports</p>
+                </div>
+            </a>
+
+            <a href="OurGames/Stickman/index.html" class="game-card" data-category="casual">
                 <div class="cover-wrapper">
                     <img src="Images/Stickman.png" alt="Stickman" class="game-cover">
                 </div>
@@ -520,7 +553,27 @@
                 </div>
             </a>
 
-            <a href="OurGames/Noel Dino Game/index.html" class="game-card">
+            <a href="OurGames/Pokemon/index.html" class="game-card" data-category="adventure">
+                <div class="cover-wrapper">
+                    <img src="Images/Pokemon.png" alt="Pokemon" class="game-cover">
+                </div>
+                <div class="game-info">
+                    <h3>Pokemon</h3>
+                    <p class="game-genre">RPG</p>
+                </div>
+            </a>
+
+            <a href="OurGames/Square Pass/index.html" class="game-card" data-category="casual">
+                <div class="cover-wrapper">
+                    <img src="Images/Square Pass.png" alt="Square Pass" class="game-cover">
+                </div>
+                <div class="game-info">
+                    <h3>Square Pass</h3>
+                    <p class="game-genre">Mouse Game</p>
+                </div>
+            </a>
+
+            <a href="OurGames/Noel Dino Game/index.html" class="game-card" data-category="casual">
                 <div class="cover-wrapper">
                     <img src="Images/Noel Dino Game.png" alt="Noel Dino Game" class="game-cover">
                 </div>
@@ -535,22 +588,22 @@
 
     <section class="info-section" id="about">
         <div class="info-container">
-			<p>This website was developed by talented middle school students from the inomaker Robotics Coding.</p>
+            <p>This website was developed by talented middle school students from the inomaker Robotics Coding.</p>
 
-		<h2 style="color: var(--primary);">🚀 Young Visionaries</h2>
-		<div class="developer-team">
+        <h2 style="color: var(--primary);">🚀 Young Visionaries</h2>
+        <div class="developer-team">
             <p><strong>Deniz Rüzgar Yıldız</strong> <span style="font-size: 0.8rem; opacity: 0.7;">(6th Grade)</span></p>
             <p><strong>Atilla Kaan Demir</strong> <span style="font-size: 0.8rem; opacity: 0.7;">(7th Grade)</span></p>
             <p><strong>Mehmet Pars Haytoğlu</strong> <span style="font-size: 0.8rem; opacity: 0.7;">(7th Grade)</span></p>
-		</div>
+        </div>
 
-			<p>These young developers showcased their own projects using Unity, HTML5, CSS3, and JavaScript, leveraging the power of Artificial Intelligence. By combining their coding skills with modern AI tools, they are not just playing games; they are building the future of digital entertainment.</p>
-			
-			<h2 style="color: var(--primary);">👥 Developer Team</h2>
+            <p>These young developers showcased their own projects using Unity, HTML5, CSS3, and JavaScript, leveraging the power of Artificial Intelligence. By combining their coding skills with modern AI tools, they are not just playing games; they are building the future of digital entertainment.</p>
+            
+            <h2 style="color: var(--primary);">👥 Developer Team</h2>
 
             <p class="developer-team">Deniz Rüzgar Yıldız • Atilla Kaan Demir • Mehmet Pars Haytoğlu</p>
             <p class="institution-tag">Institution: <strong>inomaker Robotics Coding</strong></p>
-		
+        
             <div class="contact-divider" id="contact"></div>
             
             <div class="contact-grid">
@@ -566,8 +619,34 @@
 
     <footer>
         <p>© 2026 inomaker Robotics Coding. All rights reserved.</p> 
-		<p>The games on this platform were created by our students.</p>
+        <p>The games on this platform were created by our students.</p>
     </footer>
 
-</body>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const filterBtns = document.querySelectorAll('.filter-btn');
+            const gameCards = document.querySelectorAll('.game-card');
+
+            filterBtns.forEach(btn => {
+                btn.addEventListener('click', () => {
+                    // Remove active class from all buttons
+                    filterBtns.forEach(b => b.classList.remove('active'));
+                    // Add active class to the clicked button
+                    btn.classList.add('active');
+
+                    const filterValue = btn.getAttribute('data-filter');
+
+                    // Show or hide cards based on category
+                    gameCards.forEach(card => {
+                        if (filterValue === 'all' || card.getAttribute('data-category') === filterValue) {
+                            card.classList.remove('hide');
+                        } else {
+                            card.classList.add('hide');
+                        }
+                    });
+                });
+            });
+        });
+    </script>
+    </body>
 </html>
