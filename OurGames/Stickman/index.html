@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="tr">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Classic Stickman Runner - Dynamic Math Edition</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-select=none">
+    <title>Classic Stickman Runner</title>
     <style>
         body {
             margin: 0;
@@ -12,6 +12,9 @@
             background-color: #40c4ff;
             font-family: 'Segoe UI', sans-serif;
             user-select: none;
+            -webkit-touch-callout: none;
+            -webkit-user-select: none;
+            touch-action: none; /* Mobil kaydırma ve yakınlaştırmayı engeller */
         }
         #ui-container {
             position: absolute;
@@ -48,7 +51,7 @@
             margin: 0 0 25px 0;
             line-height: 1.5;
         }
-        button {
+        button.play-btn {
             background: #2ecc71;
             color: #fff;
             border: none;
@@ -60,7 +63,7 @@
             transition: 0.2s;
             box-shadow: 0 5px 20px rgba(46, 204, 113, 0.4);
         }
-        button:hover {
+        button.play-btn:hover {
             transform: scale(1.05);
             background: #27ae60;
         }
@@ -80,6 +83,55 @@
             width: 100vw;
             height: 100vh;
         }
+
+        /* --- HER ZAMAN GÖRÜNEN KLASİK MOBİL VE MOUSE BUTONLARI --- */
+        #mobile-controls {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            height: 100%; 
+            pointer-events: none; /* Oyun alanına tıklamayı engellemez */
+            z-index: 20;
+            display: block; /* HER ZAMAN GÖRÜNÜR */
+        }
+        .ctrl-btn {
+            position: absolute;
+            bottom: 40px;
+            width: 85px;
+            height: 85px;
+            background: rgba(0, 0, 0, 0.35); /* Yarı şeffaf koyu arcade rengi */
+            border: 3px solid rgba(255, 255, 255, 0.5); /* Net beyaz çerçeve */
+            border-radius: 50%; /* Tam yuvarlak mobil buton */
+            pointer-events: auto; /* Tıklanabilir */
+            cursor: pointer;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            transition: transform 0.05s, background 0.05s;
+            -webkit-tap-highlight-color: transparent;
+            box-shadow: 0 6px 20px rgba(0,0,0,0.4);
+            user-select: none;
+            -webkit-user-select: none;
+        }
+        /* Ekranın sağ ve sol alt köşelerine tam başparmak ve el hizası yerleşimi */
+        #ctrl-left { left: 40px; }
+        #ctrl-right { right: 40px; }
+
+        /* Basılma (Aktif) Efekti - Hem Mouse Click'te hem Dokunmatikte çalışır */
+        .ctrl-btn:active, .ctrl-btn.pressed {
+            background: rgba(0, 0, 0, 0.75); /* Basınca kararma efekti */
+            transform: scale(0.88); /* Basınca içe çökme ve küçülme hissiyatı */
+            border-color: rgba(255, 255, 255, 0.9);
+        }
+
+        /* Buton İçindeki Ok İkonları */
+        .ctrl-btn svg {
+            width: 48px;
+            height: 48px;
+            fill: #ffffff; /* Parlak beyaz oklar */
+            pointer-events: none;
+        }
     </style>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 </head>
@@ -89,18 +141,27 @@
         <div id="level-indicator">LEVEL 1</div>
         <div id="start-screen" class="screen">
             <h1>STICKMAN RUNNER</h1>
-            <p>Calculate your path to beat the boss! Use <b>A</b> and <b>D</b> to move.</p>
-            <button onclick="startGame(true)">PLAY</button>
+            <p>Choose the right doors to defeat the boss! <br>Use <b>A/D</b>, <b>Arrow Arrows</b>, or the <b>Buttons</b> on the screen for control.</p>
+            <button class="play-btn" onclick="startGame(true)">PLAY</button>
         </div>
         <div id="gameover-screen" class="screen" style="display:none;">
-            <h1 style="color:#e74c3c;">YOU LOST!</h1>
-            <p>Your math was slightly off! You didn't have enough stickmen to beat the boss.</p>
-            <button onclick="startGame(false)">TRY AGAIN</button>
+            <h1 style="color:#e74c3c;">GAME OVER!</h1>
+            <p>Math error! You don't have enough men left to defeat the boss.</p>
+            <button class="play-btn" onclick="startGame(false)">RESTART</button>
         </div>
         <div id="victory-screen" class="screen" style="display:none;">
-            <h1 style="color:#2ecc71;">PERFECT VICTORY!</h1>
-            <p>Your calculations were spot on. The boss is defeated!</p>
-            <button onclick="startGame(true)">NEXT LEVEL</button>
+            <h1 style="color:#2ecc71;">A PERFECT VICTORY!</h1>
+            <p>The calculations are perfect. Boss defeated!</p>
+            <button class="play-btn" onclick="startGame(true)">NEXT LEVEL</button>
+        </div>
+    </div>
+
+    <div id="mobile-controls">
+        <div id="ctrl-left" class="ctrl-btn">
+            <svg viewBox="0 0 24 24"><path d="M15.41 7.41L14 6l-6 6 6 6 1.41-1.41L10.83 12z"/></svg>
+        </div>
+        <div id="ctrl-right" class="ctrl-btn">
+            <svg viewBox="0 0 24 24"><path d="M10 6L8.59 7.41 13.17 12l-4.58 4.59L10 18l6-6z"/></svg>
         </div>
     </div>
 
@@ -168,9 +229,6 @@
             osc.stop(now + 0.6);
         }
 
-        // YENİ: DİNAMİK KAPI ÜRETİCİSİ
-        // Bu fonksiyon, Boss'u yenebilmen için en yüksek puanlı yoldan
-        // geçtiğinde kesinlikle 'targetScore' sayısına ulaşmanı garanti eder.
         function generateDynamicGates(targetScore) {
             let zPos = -45;
             let dynamicGates = [];
@@ -181,24 +239,20 @@
                 let remaining = targetScore - currentValue;
 
                 if (i === 3) {
-                    // Son kapı: Kalan eksiği tamamlar, böylece hedef puana kesin ulaşılır.
                     let addVal = Math.max(1, targetScore - currentValue + Math.floor(Math.random() * 4));
                     goodGate = { type: '+', val: addVal, txt: '+' + addVal };
                     currentValue += addVal;
                 } else if (i === 1 && targetScore > 40) {
-                    // Yüksek levellerde 2. kapıda çarpma işlemi çıkartır
                     let mulVal = Math.random() > 0.5 ? 2 : 3;
                     goodGate = { type: 'x', val: mulVal, txt: 'X' + mulVal };
                     currentValue *= mulVal;
                 } else {
-                    // Normal toplama kapısı (Eksiğin bir kısmını kapatır)
                     let chunk = Math.floor(remaining / (4 - i));
                     if (chunk <= 0) chunk = 3; 
                     goodGate = { type: '+', val: chunk, txt: '+' + chunk };
                     currentValue += chunk;
                 }
 
-                // Kötü (yanıltıcı) kapıyı oluştur
                 let badRand = Math.random();
                 if (badRand < 0.3) {
                     let pen = Math.floor(Math.random() * 10) + 5;
@@ -208,7 +262,6 @@
                 } else {
                     let fakeVal = Math.max(1, Math.floor(goodGate.val * 0.4));
                     if (goodGate.type === 'x') {
-                        // Eğer doğru kapı X ise, kötü kapı cazip görünmeye çalışan bir '+' olur
                         fakeVal = Math.max(5, Math.floor(currentValue * 0.6)); 
                         badGate = { type: '+', val: fakeVal, txt: '+' + fakeVal };
                     } else {
@@ -216,7 +269,6 @@
                     }
                 }
 
-                // Hangi tarafın doğru olacağını rastgele seç
                 let isLeftGood = Math.random() > 0.5;
                 dynamicGates.push({
                     z: zPos,
@@ -286,15 +338,49 @@
             bossCountSprite.position.set(0, 2.4, 0);
             bossGroup.add(bossCountSprite);
 
+            // KLAVYE EVENTLERİ (Geliştirildi: Yön okları da eklendi)
             window.addEventListener('keydown', e => {
-                if(e.key.toLowerCase() === 'a') keys.a = true;
-                if(e.key.toLowerCase() === 'd') keys.d = true;
+                if(e.key.toLowerCase() === 'a' || e.key === 'ArrowLeft') keys.a = true;
+                if(e.key.toLowerCase() === 'd' || e.key === 'ArrowRight') keys.d = true;
             });
             window.addEventListener('keyup', e => {
-                if(e.key.toLowerCase() === 'a') keys.a = false;
-                if(e.key.toLowerCase() === 'd') keys.d = false;
+                if(e.key.toLowerCase() === 'a' || e.key === 'ArrowLeft') keys.a = false;
+                if(e.key.toLowerCase() === 'd' || e.key === 'ArrowRight') keys.d = false;
             });
+
+            // GÜNCELLEME: HEM MOBİL DOKUNMATİK HEM MOUSE OYNANIŞ EVENTLERİ
+            setupUniversalControls();
+
             window.addEventListener('resize', onWindowResize);
+        }
+
+        // KONTROL BUTONLARI FONKSİYONU (MOUSE + TOUCH)
+        function setupUniversalControls() {
+            const btnLeft = document.getElementById('ctrl-left');
+            const btnRight = document.getElementById('ctrl-right');
+
+            // Sol Buton Fonksiyonları
+            const pressLeft = (e) => { if(e) e.preventDefault(); keys.a = true; btnLeft.classList.add('pressed'); };
+            const releaseLeft = (e) => { if(e) e.preventDefault(); keys.a = false; btnLeft.classList.remove('pressed'); };
+            
+            // Sağ Buton Fonksiyonları
+            const pressRight = (e) => { if(e) e.preventDefault(); keys.d = true; btnRight.classList.add('pressed'); };
+            const releaseRight = (e) => { if(e) e.preventDefault(); keys.d = false; btnRight.classList.remove('pressed'); };
+
+            // Dokunmatik Ekran (Mobil) Event Dinleyicileri
+            btnLeft.addEventListener('touchstart', pressLeft, {passive: false});
+            btnLeft.addEventListener('touchend', releaseLeft);
+            btnRight.addEventListener('touchstart', pressRight, {passive: false});
+            btnRight.addEventListener('touchend', releaseRight);
+
+            // Fare (Mouse - PC) Event Dinleyicileri
+            btnLeft.addEventListener('mousedown', pressLeft);
+            btnLeft.addEventListener('mouseup', releaseLeft);
+            btnLeft.addEventListener('mouseleave', releaseLeft); // Tıklayıp dışarı sürüklenirse bırakır
+
+            btnRight.addEventListener('mousedown', pressRight);
+            btnRight.addEventListener('mouseup', releaseRight);
+            btnRight.addEventListener('mouseleave', releaseRight);
         }
 
         function createClassicStickman(colorHex) {
@@ -681,17 +767,12 @@
             levelIndicator.style.display = 'block';
 
             playerCount = 1;
-            
-            // Boss sayısı tam olarak istediğin gibi level ile hesaplanıyor
             bossCount = currentLevel * 20; 
-            
             playerGroup.position.set(0, 0, 0);
             
             gates.forEach(gate => gate.meshes.forEach(m => scene.remove(m)));
             gates = [];
             
-            // Kusursuz kapı yaratıcısı: Düşmanı yenmen için sana Boss puanından 
-            // rastgele 3 ile 10 arası daha fazla puan sağlayacak doğru kapıları hesaplar.
             const targetPlayerScore = bossCount + Math.floor(Math.random() * 8) + 3; 
             const levelGates = generateDynamicGates(targetPlayerScore);
             build3DGates(levelGates);

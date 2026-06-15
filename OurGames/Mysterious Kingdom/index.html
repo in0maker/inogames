@@ -1,0 +1,754 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mysterious Kingdom - Final English Edition v23</title>
+    <style>
+        body { margin: 0; overflow: hidden; background-color: #111; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        #ui { position: absolute; top: 20px; left: 20px; color: white; background: rgba(0,0,0,0.85); padding: 15px; border-radius: 8px; border: 1px solid #555; pointer-events: none; z-index: 10; width: 280px;}
+        h1 { margin: 0 0 5px 0; font-size: 18px; color: #e0a96d; }
+        p { margin: 3px 0; font-size: 13px; color: #ccc; }
+        #instructions { position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%); color: #fff; background: rgba(0,0,0,0.7); padding: 10px 20px; border-radius: 20px; font-size: 14px; pointer-events: none; z-index: 10; }
+        #crosshair { position: absolute; top: 50%; left: 50%; width: 6px; height: 6px; background: rgba(255,255,255,0.7); border-radius: 50%; transform: translate(-50%, -50%); pointer-events: none; z-index: 10; border: 1px solid black;}
+        
+        #dialogBox {
+            position: absolute; bottom: 40px; left: 50%; transform: translateX(-50%);
+            width: 60%; max-width: 600px;
+            background: linear-gradient(135deg, rgba(20,20,20,0.95), rgba(40,40,40,0.95));
+            border: 3px solid #e0a96d; border-radius: 10px;
+            padding: 20px; color: white; font-size: 18px;
+            box-shadow: 0px 5px 25px rgba(0,0,0,0.8);
+            display: none; z-index: 20; pointer-events: none;
+            text-align: center;
+        }
+        #dialogName { color: #e0a96d; font-weight: bold; font-size: 16px; margin-bottom: 8px; text-transform: uppercase; letter-spacing: 1px;}
+        #dialogHint { margin-top: 15px; font-size: 11px; color: #888; }
+        
+        #statPanel { position: absolute; top: 20px; right: 20px; display: flex; flex-direction: column; gap: 8px; z-index: 10; }
+        .stat-badge { color: white; font-size: 16px; font-weight: bold; background: rgba(0,0,0,0.85); padding: 10px 15px; border-radius: 6px; border: 1px solid #444; min-width: 160px; text-align: right;}
+        #hpUI { border-color: #ff3333; color: #ff6666; }
+        #badgeUI { border-color: gold; color: gold; display: none; }
+        #titleUI { border-color: #9932CC; color: #9932CC; display: none; font-size: 14px;}
+        #swordUI { border-color: #aaa; color: #ddd; display: none; }
+        #pickaxeUI { border-color: #00ccff; color: #00ccff; display: none; }
+        #bowUI { border-color: #8fbc8f; color: #8fbc8f; display: none; }
+        #dynamiteUI { border-color: #ff5500; color: #ff7733; display: none; }
+        #diamondUI { border-color: #00ffff; color: #00ffff; display: none; }
+
+        #questBox { margin-top: 12px; padding-top: 10px; border-top: 1px solid #444; }
+        #questTitle { color: #ffcc00; font-weight: bold; font-size: 13px; text-transform: uppercase; }
+        #questText { color: #00ffcc; font-size: 13px; font-weight: bold; margin-top: 4px; }
+        #dynamiteAlert { color: #ff3300; font-weight: bold; font-size: 13px; margin-top: 10px; display: none; }
+    </style>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+</head>
+<body>
+
+    <div id="ui">
+        <h1>Mysterious Kingdom</h1>
+        <p><b>Move:</b> W, A, S, D | <b>Interact/Climb:</b> R Key</p>
+        <p><b>Sword:</b> 1 | <b>Pickaxe:</b> 2 | <b>Bow:</b> 3</p>
+        <p><b>Tower Top:</b> Get Arrows from Box with 'R' (Max: 3)</p>
+        
+        <div id="questBox">
+            <div id="questTitle">🎯 ACTIVE QUEST:</div>
+            <div id="questText">Find the Royal Badge from the villager.</div>
+        </div>
+
+        <div id="dynamiteAlert">⚠️ 3 DYNAMITES COLLECTED! GO TO THE RED X!</div>
+    </div>
+    
+    <div id="statPanel">
+        <div id="hpUI" class="stat-badge">❤️ HP: 10</div>
+        <div id="badgeUI" class="stat-badge">⭐ ROYAL BADGE</div>
+        <div id="titleUI" class="stat-badge">👑 GRAND ARCHER</div>
+        <div id="swordUI" class="stat-badge">⚔️ SWORD EQUIPPED</div>
+        <div id="pickaxeUI" class="stat-badge">⛏️ PICKAXE EQUIPPED</div>
+        <div id="bowUI" class="stat-badge">🏹 BOW (0/3 ARROWS)</div>
+        <div id="dynamiteUI" class="stat-badge">🧨 DYNAMITE: 0</div>
+        <div id="diamondUI" class="stat-badge">💎 DIAMOND: 0</div>
+    </div>
+
+    <div id="crosshair"></div>
+    <div id="instructions">CLICK SCREEN TO PLAY (ESC TO EXIT)</div>
+
+    <div id="dialogBox">
+        <div id="dialogName">System</div>
+        <div id="dialogText">Loading...</div>
+        <div id="dialogHint">Press 'R' to continue / close</div>
+    </div>
+
+    <script>
+        // --- GAME PARAMETERS ---
+        let playerHP = 10;
+        let hasBadge = false, hasSword = false, hasPickaxe = false, hasBow = false, hasSpecialTitle = false;
+        let isSwordEquipped = false, isPickaxeEquipped = false, isBowEquipped = false;
+        let isSwinging = false, swingProgress = 0, hasHitThisSwing = false;
+        let collectedDynamites = 0, collectedDiamonds = 0, collectedArrows = 0;
+        
+        let questStage = 0; // 0: Badge, 1: Sword, 2: Pickaxe/Zombies, 3: Place Dynamite, 4: Mine Diamond, 5: Bring to shop, 6: Bring to King, 7: Complete
+        let playerState = 'normal'; // 'normal', 'climbing_up', 'climbing_down'
+        const climbSpeed = 7.0; const playerRadius = 0.65;
+
+        const scene = new THREE.Scene();
+        scene.background = new THREE.Color(0x3a5fcd); scene.fog = new THREE.Fog(0x3a5fcd, 50, 140); 
+        const camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 1000);
+        const renderer = new THREE.WebGLRenderer({ antialias: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.shadowMap.enabled = true;
+        document.body.appendChild(renderer.domElement);
+
+        scene.add(new THREE.AmbientLight(0xffffff, 0.4));
+        const dirLight = new THREE.DirectionalLight(0xfff3e0, 1.1); dirLight.position.set(50, 90, 30); dirLight.castShadow = true; scene.add(dirLight);
+
+        // --- COLLIDER SYSTEM ---
+        const colliders = [];
+        function addCollider(x, z, w, d) {
+            colliders.push({ minX: x - w/2, maxX: x + w/2, minZ: z - d/2, maxZ: z + d/2 });
+        }
+
+        // --- GROUND AND WALLS ---
+        const mapSize = 200; 
+        const ground = new THREE.Mesh(new THREE.PlaneGeometry(mapSize, mapSize), new THREE.MeshStandardMaterial({ color: 0x3b7a3e, roughness: 0.9 }));
+        ground.rotation.x = -Math.PI / 2; ground.receiveShadow = true; scene.add(ground);
+        
+        function createOuterWall(x, z, w, d) {
+            const wall = new THREE.Mesh(new THREE.BoxGeometry(w, 16, d), new THREE.MeshStandardMaterial({ color: 0x2c2c2c }));
+            wall.position.set(x, 8, z); scene.add(wall);
+            addCollider(x, z, w, d);
+        }
+        createOuterWall(0, mapSize/2, mapSize, 4); createOuterWall(0, -mapSize/2, mapSize, 4); createOuterWall(mapSize/2, 0, 4, mapSize); createOuterWall(-mapSize/2, 0, 4, mapSize);
+
+        // --- MODELS ---
+        function createSwordModel() {
+            const sword = new THREE.Group();
+            const blade = new THREE.Mesh(new THREE.BoxGeometry(0.1, 1.4, 0.2), new THREE.MeshStandardMaterial({color: 0xe6e6e6, metalness: 0.8})); blade.position.y = 0.9;
+            const handle = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.04, 0.4), new THREE.MeshStandardMaterial({color: 0x3d2314}));
+            sword.add(blade, handle); return sword;
+        }
+        function createPickaxeModel() {
+            const p = new THREE.Group();
+            const stick = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.04, 1.3), new THREE.MeshStandardMaterial({color: 0x5c3a21}));
+            const head = new THREE.Mesh(new THREE.BoxGeometry(0.9, 0.12, 0.12), new THREE.MeshStandardMaterial({color: 0x7a7a7a, metalness: 0.7}));
+            head.position.set(0, 0.55, 0); p.add(stick, head); return p;
+        }
+        function createBowModel() {
+            const bow = new THREE.Group();
+            const woodMat = new THREE.MeshStandardMaterial({color: 0x6b4226});
+            const topArc = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.03, 0.7), woodMat); topArc.position.set(0, 0.4, -0.15); topArc.rotation.x = -Math.PI/6;
+            const botArc = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.03, 0.7), woodMat); botArc.position.set(0, -0.4, -0.15); botArc.rotation.x = Math.PI/6;
+            const mid = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.04, 0.4), woodMat);
+            const string = new THREE.Mesh(new THREE.CylinderGeometry(0.005, 0.005, 1.3), new THREE.MeshBasicMaterial({color: 0xdddddd})); string.position.set(0, 0, -0.3);
+            bow.add(topArc, botArc, mid, string); return bow;
+        }
+        function createExclamationMark() {
+            const group = new THREE.Group();
+            const mat = new THREE.MeshBasicMaterial({ color: 0xffff00 });
+            const top = new THREE.Mesh(new THREE.CylinderGeometry(0.14, 0.06, 0.9, 8), mat); top.position.y = 0.6;
+            const dot = new THREE.Mesh(new THREE.SphereGeometry(0.14, 8, 8), mat); dot.position.y = 0;
+            group.add(top, dot); return group;
+        }
+
+        // --- HOUSES ---
+        function createHouse(hx, hz, w, d, h) {
+            const houseG = new THREE.Group();
+            const wallMat = new THREE.MeshStandardMaterial({color: 0xb87333, roughness: 0.85});
+            const roofMat = new THREE.MeshStandardMaterial({color: 0x8b2500, roughness: 0.7});
+            const walls = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), wallMat); walls.position.y = h/2; houseG.add(walls);
+            const roof = new THREE.Mesh(new THREE.ConeGeometry(Math.max(w, d) * 0.8, 2.5, 4), roofMat); roof.position.y = h + 1.25; roof.rotation.y = Math.PI/4; houseG.add(roof);
+            houseG.position.set(hx, 0, hz); scene.add(houseG); addCollider(hx, hz, w, d);
+        }
+        createHouse(-20, 25, 7, 7, 4.5); createHouse(0, 28, 8, 6, 4.5); createHouse(-25, -2, 6, 6, 4.5);
+
+        // --- ARCHERY AREA AND LADDER TOWER ---
+        const ladderX = -50, ladderZ = -38;
+        const towerHeight = 16.0;
+        function createArcheryArea() {
+            const stoneMat = new THREE.MeshStandardMaterial({ color: 0x555555, roughness: 0.9 });
+            const woodMat = new THREE.MeshStandardMaterial({ color: 0x4a2e15 });
+
+            const wall1 = new THREE.Mesh(new THREE.BoxGeometry(30, 4, 1), stoneMat); wall1.position.set(-50, 2, -25); scene.add(wall1); addCollider(-50, -25, 30, 1);
+            const wall2 = new THREE.Mesh(new THREE.BoxGeometry(1, 4, 30), stoneMat); wall2.position.set(-35, 2, -40); scene.add(wall2); addCollider(-35, -40, 1, 30);
+
+            for(let i=0; i<3; i++) {
+                const tg = new THREE.Group();
+                const stand = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.05, 1.5), woodMat); stand.position.y = 0.75;
+                const board = new THREE.Mesh(new THREE.CylinderGeometry(0.6, 0.6, 0.1, 16), new THREE.MeshStandardMaterial({color: 0xeeeeee})); board.rotation.x = Math.PI/2; board.position.set(0, 1.2, 0.1);
+                const redCenter = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.2, 0.11, 16), new THREE.MeshBasicMaterial({color: 0xcc0000})); redCenter.rotation.x = Math.PI/2; redCenter.position.set(0, 1.2, 0.1);
+                tg.add(stand, board, redCenter); tg.position.set(-60, 0, -30 - (i*5)); tg.rotation.y = Math.PI/2; scene.add(tg);
+            }
+
+            const tower = new THREE.Mesh(new THREE.BoxGeometry(8, towerHeight, 8), stoneMat); tower.position.set(-50, towerHeight/2, -42); scene.add(tower);
+            addCollider(-50, -42, 8, 8); // Tower base collider
+
+            const towerRoof = new THREE.Mesh(new THREE.BoxGeometry(10, 1, 10), new THREE.MeshStandardMaterial({color: 0x333333})); towerRoof.position.set(-50, towerHeight + 0.5, -42); scene.add(towerRoof);
+
+            const ladderG = new THREE.Group();
+            const railL = new THREE.Mesh(new THREE.BoxGeometry(0.1, towerHeight, 0.1), woodMat); railL.position.set(-0.6, towerHeight/2, 0);
+            const railR = new THREE.Mesh(new THREE.BoxGeometry(0.1, towerHeight, 0.1), woodMat); railR.position.set(0.6, towerHeight/2, 0); ladderG.add(railL, railR);
+            for(let i=0; i<towerHeight; i++) {
+                const step = new THREE.Mesh(new THREE.BoxGeometry(1.2, 0.1, 0.1), woodMat); step.position.set(0, i + 0.5, 0); ladderG.add(step);
+            }
+            ladderG.position.set(ladderX, 0, ladderZ); scene.add(ladderG);
+
+            const boxG = new THREE.Group();
+            const boxMesh = new THREE.Mesh(new THREE.BoxGeometry(1.2, 0.8, 1.2), new THREE.MeshStandardMaterial({color: 0x5c3a21})); boxMesh.position.y = 0.4;
+            const lidMesh = new THREE.Mesh(new THREE.BoxGeometry(1.3, 0.15, 1.3), new THREE.MeshStandardMaterial({color: 0x3d2314})); lidMesh.position.y = 0.85; boxG.add(boxMesh, lidMesh);
+            boxG.position.set(-52.5, towerHeight + 1.0, -44); scene.add(boxG);
+        }
+        createArcheryArea();
+
+        // --- GUNSLINGER SHOP ---
+        const shopPos = {x: 20, z: 5};
+        function createGunslingerShop() {
+            const sG = new THREE.Group();
+            const woodMat = new THREE.MeshStandardMaterial({color: 0x5c3a21});
+            const base = new THREE.Mesh(new THREE.BoxGeometry(6, 1, 4), woodMat); base.position.y = 0.5;
+            const table = new THREE.Mesh(new THREE.BoxGeometry(6, 0.2, 1.5), new THREE.MeshStandardMaterial({color: 0x8b5a2b})); table.position.set(0, 1.5, 1.5);
+            const roof = new THREE.Mesh(new THREE.BoxGeometry(6.5, 0.4, 4.5), new THREE.MeshStandardMaterial({color: 0x8b0000})); roof.position.set(0, 4, 0);
+            const p1 = new THREE.Mesh(new THREE.BoxGeometry(0.2, 4, 0.2), woodMat); p1.position.set(-2.8, 2, -1.8);
+            const p2 = new THREE.Mesh(new THREE.BoxGeometry(0.2, 4, 0.2), woodMat); p2.position.set(2.8, 2, -1.8);
+            sG.add(base, table, roof, p1, p2); sG.position.set(shopPos.x, 0, shopPos.z); scene.add(sG);
+            addCollider(shopPos.x, shopPos.z, 6, 4);
+        }
+        createGunslingerShop();
+
+        // --- CASTLE AND SURROUNDING INTERIOR ---
+        let rackSword, swordMark;
+        function createTrueCastle() {
+            const stoneMat = new THREE.MeshStandardMaterial({ color: 0x4a4a4a, roughness: 0.85 });
+            
+            const tL = new THREE.Mesh(new THREE.CylinderGeometry(3.5, 3.5, 22, 8), stoneMat); tL.position.set(-14, 11, -38); scene.add(tL); addCollider(-14, -38, 7, 7);
+            const tR = new THREE.Mesh(new THREE.CylinderGeometry(3.5, 3.5, 22, 8), stoneMat); tR.position.set(14, 11, -38); scene.add(tR); addCollider(14, -38, 7, 7);
+            
+            const extWallL = new THREE.Mesh(new THREE.BoxGeometry(32, 14, 4), stoneMat); extWallL.position.set(-30, 7, -38); scene.add(extWallL); addCollider(-30, -38, 32, 4);
+            const extWallR = new THREE.Mesh(new THREE.BoxGeometry(32, 14, 4), stoneMat); extWallR.position.set(30, 7, -38); scene.add(extWallR); addCollider(30, -38, 32, 4);
+
+            const pWallL = new THREE.Mesh(new THREE.BoxGeometry(2, 22, 38), stoneMat); pWallL.position.set(-17, 11, -57); scene.add(pWallL); addCollider(-17, -57, 2, 38);
+            const pWallR = new THREE.Mesh(new THREE.BoxGeometry(2, 22, 38), stoneMat); pWallR.position.set(17, 11, -57); scene.add(pWallR); addCollider(17, -57, 2, 38);
+            const pWallBack = new THREE.Mesh(new THREE.BoxGeometry(36, 22, 2), stoneMat); pWallBack.position.set(0, 11, -76); scene.add(pWallBack); addCollider(0, -76, 36, 2);
+            
+            const pWallFrontL = new THREE.Mesh(new THREE.BoxGeometry(11, 22, 2), stoneMat); pWallFrontL.position.set(-11.5, 11, -38); scene.add(pWallFrontL); addCollider(-11.5, -38, 11, 2);
+            const pWallFrontR = new THREE.Mesh(new THREE.BoxGeometry(11, 22, 2), stoneMat); pWallFrontR.position.set(11.5, 11, -38); scene.add(pWallFrontR); addCollider(11.5, -38, 11, 2);
+            
+            const floor = new THREE.Mesh(new THREE.BoxGeometry(32, 0.4, 36), new THREE.MeshStandardMaterial({ color: 0x333333 })); floor.position.set(0, 0.2, -57); scene.add(floor);
+            const carpet = new THREE.Mesh(new THREE.BoxGeometry(6, 0.45, 32), new THREE.MeshStandardMaterial({ color: 0x8b0000 })); carpet.position.set(0, 0.22, -57); scene.add(carpet);
+            const rLight = new THREE.PointLight(0xffca28, 1.8, 50); rLight.position.set(0, 14, -57); scene.add(rLight);
+            
+            const gMat = new THREE.MeshStandardMaterial({ color: 0xdaa520, metalness: 0.8 });
+            const tBase = new THREE.Mesh(new THREE.BoxGeometry(4, 0.6, 4), gMat); tBase.position.set(0, 0.5, -71); scene.add(tBase);
+            const tBack = new THREE.Mesh(new THREE.BoxGeometry(3.6, 5, 0.6), gMat); tBack.position.set(0, 3.1, -72.4); scene.add(tBack);
+
+            const rBase = new THREE.Mesh(new THREE.BoxGeometry(1.5, 0.8, 1), new THREE.MeshStandardMaterial({color: 0x4a2e15})); rBase.position.set(-6, 0.8, -69); scene.add(rBase);
+            rackSword = createSwordModel(); rackSword.position.set(-6, 2.3, -68.9); rackSword.rotation.z = -Math.PI / 4; scene.add(rackSword);
+            swordMark = createExclamationMark(); swordMark.position.set(-6, 3.6, -69); scene.add(swordMark);
+        }
+        createTrueCastle();
+
+        // --- CAVE AND RE-DECORATED PROPS ---
+        let pickaxeWorldItem = null, pickaxeMark = null;
+        let dynamitesInWorld = [];
+        let redX = { active: true, placed: 0, x: 80, z: 20, mesh: null, mark: null };
+        const placedDynMeshes = [];
+        let isExploding = false; let explTimer = 0;
+        let diamondObj = { mesh: null, hp: 3, spawned: false, mark: null };
+        let explosionEffect = null;
+
+        function createAtmosphericCave() {
+            const caveMat = new THREE.MeshStandardMaterial({ color: 0x1c1c1c, roughness: 1.0 });
+            const floorMat = new THREE.MeshStandardMaterial({ color: 0x141414, roughness: 1.0 });
+            
+            const caveFloor = new THREE.Mesh(new THREE.BoxGeometry(50, 0.4, 60), floorMat); caveFloor.position.set(65, 0.2, 0); scene.add(caveFloor);
+            const caveCeiling = new THREE.Mesh(new THREE.BoxGeometry(54, 2, 64), caveMat); caveCeiling.position.set(65, 15, 0); scene.add(caveCeiling);
+
+            const buildWall = (x,y,z,w,h,d) => { const mw = new THREE.Mesh(new THREE.BoxGeometry(w,h,d), caveMat); mw.position.set(x,y,z); scene.add(mw); addCollider(x, z, w, d); };
+            buildWall(88, 7.5, 0, 4, 15, 60); buildWall(65, 7.5, -30, 50, 15, 4); buildWall(65, 7.5, 30, 50, 15, 4); 
+            buildWall(42, 7.5, -22, 4, 15, 16); buildWall(42, 7.5, 22, 4, 15, 16); 
+            
+            const arch = new THREE.Mesh(new THREE.BoxGeometry(4, 4, 28), caveMat); arch.position.set(42, 13, 0); scene.add(arch);
+
+            pickaxeWorldItem = createPickaxeModel(); pickaxeWorldItem.position.set(48, 0.5, -23); pickaxeWorldItem.rotation.x = Math.PI/2; scene.add(pickaxeWorldItem);
+            pickaxeMark = createExclamationMark(); pickaxeMark.position.set(48, 1.8, -23); scene.add(pickaxeMark);
+
+            const xGroup = new THREE.Group();
+            const pMat = new THREE.MeshBasicMaterial({color: 0xff0000, side: THREE.DoubleSide});
+            const p1 = new THREE.Mesh(new THREE.PlaneGeometry(4.0, 1.0), pMat); p1.rotation.x = -Math.PI/2; p1.rotation.y = Math.PI/4;
+            const p2 = new THREE.Mesh(new THREE.PlaneGeometry(4.0, 1.0), pMat); p2.rotation.x = -Math.PI/2; p2.rotation.y = -Math.PI/4;
+            xGroup.add(p1, p2); xGroup.position.set(redX.x, 0.45, redX.z); scene.add(xGroup); redX.mesh = xGroup;
+            redX.mark = createExclamationMark(); redX.mark.position.set(redX.x, 2.2, redX.z); scene.add(redX.mark);
+
+            for (let i = 0; i < 25; i++) {
+                const rock = new THREE.Mesh(new THREE.DodecahedronGeometry(0.5 + Math.random()), new THREE.MeshStandardMaterial({ color: 0x3a3a3a }));
+                rock.position.set(45 + Math.random()*40, 0, -25 + Math.random()*50);
+                rock.rotation.set(Math.random(), Math.random(), Math.random()); scene.add(rock);
+            }
+
+            function createMushroom(mx, mz, colorHex) {
+                const shroom = new THREE.Group();
+                const stem = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.16, 0.5), new THREE.MeshStandardMaterial({color: 0xdddddd})); stem.position.y = 0.25;
+                const cap = new THREE.Mesh(new THREE.SphereGeometry(0.35, 8, 8, 0, Math.PI*2, 0, Math.PI/2), new THREE.MeshStandardMaterial({color: colorHex, emissive: colorHex, emissiveIntensity: 2.0}));
+                cap.position.y = 0.45; shroom.add(stem, cap);
+                const pLt = new THREE.PointLight(colorHex, 1.2, 8); pLt.position.set(0, 0.6, 0); shroom.add(pLt);
+                shroom.position.set(mx, 0.2, mz); scene.add(shroom);
+            }
+            createMushroom(52, 12, 0x00ffaa); createMushroom(72, -15, 0xff00ff); createMushroom(82, 8, 0x00ffff); createMushroom(60, -22, 0xffff00);
+
+            for (let i = 0; i < 16; i++) {
+                const stalactite = new THREE.Mesh(new THREE.ConeGeometry(0.3 + Math.random()*0.5, 4 + Math.random()*4, 6), new THREE.MeshStandardMaterial({ color: 0x282828 }));
+                stalactite.rotation.x = Math.PI; stalactite.position.set(46 + Math.random()*38, 14.8, -26 + Math.random()*52); scene.add(stalactite);
+            }
+        }
+        createAtmosphericCave();
+
+        // --- ENEMY AI (ZOMBIES) ---
+        let zombies = []; let projectiles = [];
+        function createDetailedZombie() {
+            const zg = new THREE.Group();
+            const skinMat = new THREE.MeshStandardMaterial({ color: 0x458b00 }); const clothMat = new THREE.MeshStandardMaterial({ color: 0x224422 });
+            const headG = new THREE.Group();
+            const head = new THREE.Mesh(new THREE.BoxGeometry(0.75, 0.75, 0.75), skinMat); headG.add(head);
+            const eyeM = new THREE.MeshBasicMaterial({ color: 0xff0000 });
+            const lE = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.12, 0.1), eyeM); lE.position.set(-0.2, 0.1, 0.38);
+            const rE = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.12, 0.1), eyeM); rE.position.set(0.2, 0.1, 0.38);
+            headG.add(lE, rE); headG.position.y = 2.9; zg.add(headG);
+            const torso = new THREE.Mesh(new THREE.CylinderGeometry(0.42, 0.5, 1.1, 16), clothMat); torso.position.y = 1.95; zg.add(torso);
+            const cLeg = (isL) => { const g = new THREE.Group(); const l = new THREE.Mesh(new THREE.CylinderGeometry(0.15, 0.15, 1.0, 12), new THREE.MeshStandardMaterial({ color: 0x11161b })); l.position.y = -0.5; g.add(l); g.position.set(isL ? -0.22 : 0.22, 1.4, 0); return g; }; zg.add(cLeg(true), cLeg(false));
+            const cArm = (isL) => { const g = new THREE.Group(); const a = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.11, 0.9, 12), skinMat); a.position.y = -0.35; a.rotation.x = -Math.PI/2; g.add(a); g.position.set(isL ? -0.55 : 0.55, 2.3, 0); return g; }; zg.add(cArm(true), cArm(false));
+            const hpBarG = new THREE.Group();
+            const hpBg = new THREE.Mesh(new THREE.PlaneGeometry(1.4, 0.18), new THREE.MeshBasicMaterial({ color: 0x440000 }));
+            const hpGr = new THREE.Mesh(new THREE.PlaneGeometry(1.4, 0.18), new THREE.MeshBasicMaterial({ color: 0x00ff00 })); hpGr.position.z = 0.01; hpBarG.add(hpBg, hpGr); hpBarG.position.y = 3.6; zg.add(hpBarG);
+            zg.userData = { leftLeg: zg.children[2], rightLeg: zg.children[3], hpBarGroup: hpBarG, hpGreen: hpGr }; return zg;
+        }
+
+        function spawnZombie(x, z) {
+            const zMesh = createDetailedZombie(); zMesh.position.set(x, 0.2, z); scene.add(zMesh);
+            zombies.push({ mesh: zMesh, hp: 3, alive: true, lastAttack: 0 });
+        }
+        spawnZombie(56, 6); spawnZombie(76, -14); 
+
+        function createCharacter(clothColor, pantsColor, hatType, hatColor) {
+            const char = new THREE.Group(); const headG = new THREE.Group();
+            const head = new THREE.Mesh(new THREE.SphereGeometry(0.4, 16, 16), new THREE.MeshStandardMaterial({ color: 0xffe0bd })); headG.add(head);
+            const hatG = new THREE.Group(); const hM = new THREE.MeshStandardMaterial({ color: hatColor });
+            if (hatType === 4) { 
+                const c = new THREE.Mesh(new THREE.CylinderGeometry(0.45, 0.4, 0.5, 8), new THREE.MeshStandardMaterial({ color: 0xffd700, metalness: 0.8 })); c.position.y = 0.45; hatG.add(c);
+            } else if (hatType > 0) {
+                const b = new THREE.Mesh(new THREE.CylinderGeometry(0.65, 0.65, 0.04, 16), hM); b.position.y = 0.28; hatG.add(b);
+                const t = new THREE.Mesh(new THREE.CylinderGeometry(0.38, 0.42, 0.5, 16), hM); t.position.y = 0.53; hatG.add(t);
+            }
+            hatG.position.y = -0.12; headG.add(hatG); headG.position.y = 2.9; char.add(headG);
+            const torso = new THREE.Mesh(new THREE.CylinderGeometry(0.4, 0.5, 1.1, 16), new THREE.MeshStandardMaterial({ color: clothColor })); torso.position.y = 1.95; char.add(torso);
+            const lG = (isL) => { const g = new THREE.Group(); const l = new THREE.Mesh(new THREE.CylinderGeometry(0.14, 0.14, 1.0, 16), new THREE.MeshStandardMaterial({ color: pantsColor })); l.position.y = -0.5; g.add(l); g.position.set(isL ? -0.22 : 0.22, 1.4, 0); return g; };
+            const leftLeg = lG(true); const rightLeg = lG(false); char.add(leftLeg, rightLeg);
+            const aG = (isL) => { const g = new THREE.Group(); const a = new THREE.Mesh(new THREE.CylinderGeometry(0.11, 0.11, 0.9, 16), new THREE.MeshStandardMaterial({ color: clothColor })); a.position.y = -0.35; g.add(a); g.position.set(isL ? -0.55 : 0.55, 2.3, 0); return g; };
+            const leftArm = aG(true); const rightArm = aG(false); char.add(leftArm, rightArm);
+            char.userData = { leftLeg, rightLeg, leftArm, rightArm, head: headG, questMark: null }; return char;
+        }
+
+        const player = createCharacter(0x1e4a38, 0x223344, 3, 0x8b1a1a); scene.add(player);
+        const playerSword = createSwordModel(); playerSword.position.set(0, -0.6, 0.2); playerSword.rotation.x = Math.PI/2; playerSword.visible = false; player.userData.rightArm.add(playerSword);
+        const playerPickaxe = createPickaxeModel(); playerPickaxe.position.set(0, -0.4, 0.2); playerPickaxe.rotation.x = Math.PI/2; playerPickaxe.visible = false; player.userData.rightArm.add(playerPickaxe);
+        const playerBow = createBowModel(); playerBow.position.set(0, -0.5, 0.1); playerBow.rotation.set(0, Math.PI, 0); playerBow.visible = false; player.userData.rightArm.add(playerBow);
+
+        function spawnStaticDynamite(x, z) {
+            const d = new THREE.Group();
+            const s = new THREE.Mesh(new THREE.CylinderGeometry(0.18, 0.18, 0.55), new THREE.MeshStandardMaterial({color: 0xcc0000})); s.position.y=0.25; d.add(s); d.position.set(x, 0.1, z); scene.add(d); return d;
+        }
+
+        // --- VILLAGERS & NPCS ---
+        const npcs = [];
+        const npcConfigs = [
+            { c: 0x8b5a2b, p: 0x3d2314, h: 1, hc: 0x3a2214, x: 14, z: -14, d: "There are dangerous monsters inside the cave! Slay them to take their dynamites." },
+            { c: 0xb22222, p: 0x243344, h: 3, hc: 0xcca43b, x: -12, z: 12, d: "Take this Royal Badge. Now you can easily pass the front castle guards to see our Great King.", isBadgeNpc: true },
+            { c: 0xd35400, p: 0x1e4a24, h: 1, hc: 0x6e7b8b, x: 10, z: 20, d: "Find 2 dynamites and plant them carefully on the big red X sign inside the cave!" }
+        ];
+
+        npcConfigs.forEach(cfg => {
+            const npc = createCharacter(cfg.c, cfg.p, cfg.h, cfg.hc); npc.position.set(cfg.x, 0, cfg.z); scene.add(npc);
+            npc.userData.ai = { state: 'idle', timer: Math.random()*3+2, targetX: cfg.x, targetZ: cfg.z, speed: 0.08 };
+            npc.userData.isBadgeNpc = cfg.isBadgeNpc || false; npc.userData.hasQuest = true; npc.userData.dialogText = cfg.d;
+            const mark = createExclamationMark(); mark.position.y = 4.2; npc.add(mark); npc.userData.questMark = mark; npcs.push(npc);
+        });
+
+        const shopkeeper = createCharacter(0x2f4f4f, 0x1a1a1a, 2, 0x000000); shopkeeper.position.set(shopPos.x, 0, shopPos.z - 1.5); scene.add(shopkeeper);
+        shopkeeper.userData.ai = { state: 'fixed' }; shopkeeper.userData.hasQuest = true; shopkeeper.userData.isShopkeeper = true;
+        shopkeeper.userData.dialogText = "Bring me the Holy Diamond hidden in the cave, and I shall hand you this Legendary Bow!";
+        const sMark = createExclamationMark(); sMark.position.y = 4.2; shopkeeper.add(sMark); shopkeeper.userData.questMark = sMark; npcs.push(shopkeeper);
+
+        const king = createCharacter(0x551a8b, 0x111111, 4, 0xffd700); king.position.set(0, 0.4, -56); scene.add(king);
+        king.userData.ai = { state: 'fixed' }; king.userData.hasQuest = true; king.userData.isKing = true;
+        king.userData.dialogText = "Brave Knight! Wield the Legendary Bow from the Gunslinger Shop to prove your absolute power!"; 
+        const kMark = createExclamationMark(); kMark.position.y = 4.5; king.add(kMark); king.userData.questMark = kMark; npcs.push(king);
+
+        for(let i=0; i<2; i++) {
+            const archer = createCharacter(0x228b22, 0x3d2314, 1, 0x228b22); archer.position.set(-44 + i*6, 0, -30); scene.add(archer);
+            archer.userData.ai = { state: 'fixed' }; const ab = createBowModel(); ab.position.set(0,-0.5,0.1); ab.rotation.set(0,Math.PI,0); archer.userData.rightArm.add(ab);
+        }
+        const guard = createCharacter(0x666666, 0x222222, 2, 0x444444); guard.position.set(4.0, 0, -36); scene.add(guard);
+        const spear = new THREE.Mesh(new THREE.CylinderGeometry(0.03,0.03,2.6), new THREE.MeshStandardMaterial({color:0x4a2e15}));
+        spear.position.set(0,-0.2,0.2); spear.rotation.x=Math.PI/8; guard.userData.rightArm.add(spear);
+
+        // --- COLLISION TESTING ---
+        function checkCollision(x, z, radius) {
+            if (player.position.y > 10.0) return false; // Ignore ground colliders while on the tower top roof
+            for (let c of colliders) {
+                let closestX = Math.max(c.minX, Math.min(x, c.maxX));
+                let closestZ = Math.max(c.minZ, Math.min(z, c.maxZ));
+                let distX = x - closestX; let distZ = z - closestZ;
+                if ((distX * distX) + (distZ * distZ) < radius * radius) return true;
+            }
+            return false;
+        }
+
+        // --- INPUT HANDLING ---
+        const clock = new THREE.Clock(); let camYaw = 0, camPitch = 0.4; const camDistance = 9;
+        window.addEventListener('click', () => { document.body.requestPointerLock(); });
+
+        window.addEventListener('mousedown', (e) => {
+            if (document.pointerLockElement === document.body && e.button === 0 && playerState === 'normal' && !activeDialogNpc) {
+                if ((isSwordEquipped || isPickaxeEquipped) && !isSwinging) {
+                    isSwinging = true; swingProgress = 0; hasHitThisSwing = false;
+                } else if (isBowEquipped) {
+                    if (collectedArrows > 0) {
+                        collectedArrows--; updateUI();
+                        const fX = -Math.sin(camYaw), fZ = -Math.cos(camYaw);
+                        const arrowProj = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.02, 0.7), new THREE.MeshBasicMaterial({color: 0xffffff}));
+                        arrowProj.position.copy(player.position).y += 1.5; arrowProj.rotation.set(Math.PI/2, camYaw, 0);
+                        arrowProj.userData = { dirX: fX, dirZ: fZ, speed: 40, life: 2.0 }; scene.add(arrowProj); projectiles.push(arrowProj);
+                    } else showScreenDialog("System", "Out of arrows! Restock ammo from the chest on top of the ladder tower.");
+                }
+            }
+        });
+
+        window.addEventListener('mousemove', (e) => {
+            if (document.pointerLockElement === document.body && !activeDialogNpc && playerState === 'normal') {
+                camYaw -= e.movementX * 0.0025; camPitch += e.movementY * 0.0025; camPitch = Math.max(0.1, Math.min(1.2, camPitch));
+            }
+        });
+
+        const keys = { w: false, a: false, s: false, d: false }; let activeDialogNpc = null;
+
+        function updateUI() {
+            document.getElementById('swordUI').style.display = isSwordEquipped ? "block" : "none";
+            document.getElementById('pickaxeUI').style.display = isPickaxeEquipped ? "block" : "none";
+            document.getElementById('bowUI').style.display = isBowEquipped ? "block" : "none";
+            document.getElementById('bowUI').innerText = "🏹 BOW (" + collectedArrows + "/3 ARROWS)";
+            document.getElementById('diamondUI').innerText = "💎 DIAMOND: " + collectedDiamonds;
+            document.getElementById('dynamiteUI').innerText = "🧨 DYNAMITE: " + collectedDynamites;
+
+            if (collectedDynamites >= 3) {
+                document.getElementById('dynamiteAlert').style.display = "block";
+            } else {
+                document.getElementById('dynamiteAlert').style.display = "none";
+            }
+
+            // QUEST TEXT UPDATER
+            const q = document.getElementById('questText');
+            if (questStage === 0) q.innerText = "Find the Royal Badge from the villager.";
+            else if (questStage === 1) q.innerText = "Enter the Castle and take the Royal Sword from the rack.";
+            else if (questStage === 2) q.innerText = "Explore the Cave. Pick up the Pickaxe and defeat zombies for Dynamites.";
+            else if (questStage === 3) q.innerText = "Place 2 Dynamites on the Red X sign inside the Cave.";
+            else if (questStage === 4) q.innerText = "Wait for the blast and mine the Holy Diamond using your Pickaxe [2].";
+            else if (questStage === 5) q.innerText = "Bring the Holy Diamond to the Gunslinger Shop keeper.";
+            else if (questStage === 6) q.innerText = "Present the Legendary Bow to the King inside the Castle.";
+            else if (questStage === 7) q.innerText = "Quest Complete! You are the legendary Grand Archer!";
+        }
+
+        window.addEventListener('keydown', (e) => {
+            const k = e.key.toLowerCase(); if (k in keys) keys[k] = true;
+            if (playerState !== 'normal') return;
+
+            if (k === '1' && hasSword && !isSwinging) {
+                isSwordEquipped = !isSwordEquipped; playerSword.visible = isSwordEquipped;
+                if(isSwordEquipped) { isPickaxeEquipped = false; playerPickaxe.visible = false; isBowEquipped = false; playerBow.visible = false; } updateUI();
+            }
+            if (k === '2' && hasPickaxe && !isSwinging) {
+                isPickaxeEquipped = !isPickaxeEquipped; playerPickaxe.visible = isPickaxeEquipped;
+                if(isPickaxeEquipped) { isSwordEquipped = false; playerSword.visible = false; isBowEquipped = false; playerBow.visible = false; } updateUI();
+            }
+            if (k === '3' && hasBow && !isSwinging) {
+                isBowEquipped = !isBowEquipped; playerBow.visible = isBowEquipped;
+                if(isBowEquipped) { isSwordEquipped = false; playerSword.visible = false; isPickaxeEquipped = false; playerPickaxe.visible = false; } updateUI();
+            }
+            if (k === 'r') {
+                if (player.position.y > 10.0 && player.position.distanceTo(new THREE.Vector3(-52.5, player.position.y, -44)) < 2.5) {
+                    if (collectedArrows < 3) { collectedArrows++; updateUI(); showScreenDialog("Ammo Cache", "1 Arrow added to your quiver. (" + collectedArrows + "/3)"); }
+                    else showScreenDialog("Ammo Cache", "Max arrow capacity reached!"); return;
+                }
+                
+                // FIXED & SOLID LADDER MECHANISM TRIGGER
+                if (Math.hypot(player.position.x - ladderX, player.position.z - ladderZ) < 2.5) {
+                    if (player.position.y < 5.0) { 
+                        playerState = 'climbing_up'; 
+                        player.position.set(-50, player.position.y, -37.8); 
+                        camYaw = Math.PI; 
+                        return; 
+                    }
+                    else if (player.position.y > 12.0) { 
+                        playerState = 'climbing_down'; 
+                        player.position.set(-50, 16.0, -37.8); 
+                        camYaw = Math.PI; 
+                        return; 
+                    }
+                }
+
+                if (redX.active && player.position.distanceTo(new THREE.Vector3(redX.x, player.position.y, redX.z)) < 4.0) {
+                    if (collectedDynamites > 0 && redX.placed < 2) {
+                        collectedDynamites--; redX.placed++; placedDynMeshes.push(spawnStaticDynamite(redX.x + (redX.placed===1 ? -0.6 : 0.6), redX.z)); updateUI();
+                        if (redX.placed === 2) {
+                            redX.active = false; isExploding = true; explTimer = 3.0; if (redX.mark) { scene.remove(redX.mark); redX.mark = null; }
+                            showScreenDialog("Danger!", "DYNAMITES DETONATING! STAND BACK IMMEDIATELY!");
+                            if (questStage === 3) questStage = 4; updateUI();
+                        } else showScreenDialog("System", "1 Dynamite planted. Need one more to burst the rock.");
+                    } else if (collectedDynamites === 0) showScreenDialog("System", "You don't have any dynamites!");
+                    return; 
+                }
+
+                let closestNpc = null; let minD = 4;
+                npcs.forEach(npc => { if (npc.userData.hasQuest && player.position.distanceTo(npc.position) < minD) { closestNpc = npc; minD = player.position.distanceTo(npc.position); } });
+                
+                if (activeDialogNpc) {
+                    if (activeDialogNpc.userData.isShopkeeper && collectedDiamonds > 0) {
+                        collectedDiamonds--; hasBow = true; updateUI(); activeDialogNpc.userData.dialogText = "Splendid! You brought the shard. Here is your Legendary Bow!";
+                        showScreenDialog("Gunslinger", activeDialogNpc.userData.dialogText);
+                        if(activeDialogNpc.userData.questMark) activeDialogNpc.userData.questMark.visible = false; activeDialogNpc = null; 
+                        if (questStage === 5) questStage = 6; updateUI(); return;
+                    }
+                    if (activeDialogNpc.userData.isKing && hasBow && !hasSpecialTitle) {
+                        hasSpecialTitle = true; document.getElementById('titleUI').style.display = "block"; activeDialogNpc.userData.dialogText = "Magnificent bow skill! I rightfully crown you the 'Grand Archer' of this kingdom!";
+                        showScreenDialog("King", activeDialogNpc.userData.dialogText);
+                        if(activeDialogNpc.userData.questMark) activeDialogNpc.userData.questMark.visible = false; activeDialogNpc = null; 
+                        if (questStage === 6) questStage = 7; updateUI(); return;
+                    }
+                    if (activeDialogNpc.userData.isBadgeNpc && !hasBadge) { 
+                        hasBadge = true; document.getElementById('badgeUI').style.display = "block"; activeDialogNpc.userData.dialogText = "You now wear the insignia. Enter the throne room as you wish."; 
+                        if(activeDialogNpc.userData.questMark) activeDialogNpc.userData.questMark.visible = false;
+                        if (questStage === 0) questStage = 1; updateUI();
+                    } else if (activeDialogNpc.userData.questMark && !activeDialogNpc.userData.isKing && !activeDialogNpc.userData.isShopkeeper) {
+                        activeDialogNpc.userData.questMark.visible = false;
+                    }
+                    if (activeDialogNpc.userData.ai.state !== 'fixed') activeDialogNpc.userData.ai.state = 'idle';
+                    activeDialogNpc = null; document.getElementById('dialogBox').style.display = 'none';
+                } else if (closestNpc) {
+                    activeDialogNpc = closestNpc; if(activeDialogNpc.userData.ai.state !== 'fixed') activeDialogNpc.userData.ai.state = 'talking'; 
+                    activeDialogNpc.lookAt(player.position.x, activeDialogNpc.position.y, player.position.z);
+                    if (activeDialogNpc.userData.isShopkeeper && collectedDiamonds > 0) showScreenDialog("Gunslinger", "Holy heavens! The Diamond! Wondrous, let's swap...");
+                    else if (activeDialogNpc.userData.isKing && hasBow && !hasSpecialTitle) showScreenDialog("King", "The Legendary Bow is in your grasp! Let me witness its shine...");
+                    else { let nName = "Villager"; if(activeDialogNpc.userData.isKing) nName="King"; if(activeDialogNpc.userData.isShopkeeper) nName="Gunslinger"; showScreenDialog(nName, activeDialogNpc.userData.dialogText); }
+                } else if (!hasSword && player.position.distanceTo(new THREE.Vector3(-6, player.position.y, -69)) < 3) {
+                    hasSword = true; rackSword.visible = false; if(swordMark) { scene.remove(swordMark); swordMark = null; }
+                    showScreenDialog("System", "You picked up the Legendary Royal Sword! Press [1] to equip it.");
+                    if (questStage === 1) questStage = 2; updateUI();
+                }
+            }
+        });
+        window.addEventListener('keyup', (e) => { const k = e.key.toLowerCase(); if (k in keys) keys[k] = false; });
+
+        function showScreenDialog(name, text) { document.getElementById('dialogName').innerText = name; document.getElementById('dialogText').innerText = text; document.getElementById('dialogBox').style.display = 'block'; setTimeout(() => { if (!activeDialogNpc) document.getElementById('dialogBox').style.display = 'none'; }, 4000); }
+
+        // --- GAME LOOP ---
+        let guardTimer = 0;
+
+        function animate() {
+            requestAnimationFrame(animate);
+            const delta = clock.getDelta(); const time = clock.getElapsedTime();
+
+            npcs.forEach(npc => { if (npc.userData.questMark && npc.userData.questMark.visible) { npc.userData.questMark.position.y = (npc.userData.isKing ? 4.5 : 4.2) + Math.sin(time * 4) * 0.15; npc.userData.questMark.rotation.y += 0.04; } });
+            if (swordMark) { swordMark.position.y = 3.6 + Math.sin(time * 4) * 0.15; swordMark.rotation.y += 0.04; }
+            if (pickaxeMark) { pickaxeMark.position.y = 1.8 + Math.sin(time * 4) * 0.15; pickaxeMark.rotation.y += 0.04; }
+            if (redX.mark) { redX.mark.position.y = 2.2 + Math.sin(time * 4) * 0.15; redX.mark.rotation.y += 0.04; }
+            if (diamondObj.mark) { diamondObj.mark.position.y = 2.5 + Math.sin(time * 4) * 0.15; diamondObj.mark.rotation.y += 0.04; }
+
+            if (!hasBadge && player.position.z < -35 && player.position.z > -39 && Math.abs(player.position.x) < 5.0) {
+                guardTimer = 2.0; player.position.z = -24; showScreenDialog("Guard", "HALT! Royal authorization required. Seek the villager for a badge!");
+            }
+            guard.userData.rightArm.rotation.x = guardTimer > 0 ? -Math.PI/2 : 0; if (guardTimer > 0) guardTimer -= delta;
+
+            let isPlayerInCave = (player.position.x >= 40 && player.position.x <= 90 && player.position.z >= -30 && player.position.z <= 30);
+            
+            // CRITICAL HEIGHT BUG SOLVED HERE (Added tower floor state recognition)
+            let targetBaseY = 0;
+            if (player.position.y > 10.0) {
+                targetBaseY = 16.0;
+            } else if (isPlayerInCave) {
+                targetBaseY = 0.2;
+            } else if (player.position.z <= -37 && Math.abs(player.position.x) <= 16) {
+                targetBaseY = 0.4;
+            }
+
+            zombies.forEach(z => {
+                if (z.alive && z.mesh) {
+                    z.mesh.userData.hpBarGroup.lookAt(camera.position);
+                    if (isPlayerInCave && playerState === 'normal') {
+                        z.mesh.lookAt(player.position.x, z.mesh.position.y, player.position.z);
+                        z.mesh.position.addScaledVector(new THREE.Vector3().subVectors(player.position, z.mesh.position).normalize(), 0.05);
+                        z.mesh.userData.leftLeg.rotation.x = Math.sin(time * 10) * 0.4; z.mesh.userData.rightLeg.rotation.x = -Math.sin(time * 10) * 0.4;
+
+                        if (z.mesh.position.distanceTo(player.position) < 1.6 && time - z.lastAttack > 1.2) {
+                            playerHP -= 1; z.lastAttack = time; document.getElementById('hpUI').innerText = "❤️ HP: " + playerHP;
+                            if (playerHP <= 0) { playerHP = 10; document.getElementById('hpUI').innerText = "❤️ HP: " + playerHP; player.position.set(0, 0, 0); alert("The undead clawed you down! Respawned safely in the village square."); }
+                        }
+                    }
+                    z.mesh.position.x = Math.max(43, Math.min(86, z.mesh.position.x)); z.mesh.position.z = Math.max(-27, Math.min(27, z.mesh.position.z)); z.mesh.position.y = 0.2;
+                }
+            });
+
+            for(let i = dynamitesInWorld.length - 1; i >= 0; i--) {
+                if (player.position.distanceTo(dynamitesInWorld[i].position) < 1.6 && playerState === 'normal') { scene.remove(dynamitesInWorld[i]); dynamitesInWorld.splice(i, 1); collectedDynamites++; updateUI(); }
+            }
+            if (pickaxeWorldItem && player.position.distanceTo(pickaxeWorldItem.position) < 1.8 && playerState === 'normal') {
+                scene.remove(pickaxeWorldItem); pickaxeWorldItem = null; if(pickaxeMark) { scene.remove(pickaxeMark); pickaxeMark = null; }
+                hasPickaxe = true; showScreenDialog("System", "You found the Old Miner's Pickaxe! Press [2] to equip it.");
+                if (questStage === 2) questStage = 3; updateUI();
+            }
+
+            for(let i = projectiles.length - 1; i >= 0; i--) {
+                let p = projectiles[i]; p.position.x += p.userData.dirX * p.userData.speed * delta; p.position.z += p.userData.dirZ * p.userData.speed * delta; p.userData.life -= delta;
+                let hitSomething = false;
+                zombies.forEach(z => {
+                    if (z.alive && p.position.distanceTo(z.mesh.position) < 1.8) {
+                        z.hp -= 1; hitSomething = true; const ratio = Math.max(0, z.hp/3); z.mesh.userData.hpGreen.scale.x = ratio; z.mesh.userData.hpGreen.position.x = -(1-ratio)*0.7;
+                        if (z.hp <= 0) { z.alive = false; scene.remove(z.mesh); dynamitesInWorld.push(spawnStaticDynamite(z.mesh.position.x, z.mesh.position.z)); }
+                    }
+                });
+                if (hitSomething || p.userData.life <= 0) { scene.remove(p); projectiles.splice(i, 1); }
+            }
+
+            if (isExploding) {
+                explTimer -= delta;
+                if (explTimer <= 0) {
+                    isExploding = false;
+                    explosionEffect = new THREE.Mesh(new THREE.SphereGeometry(3.5, 16, 16), new THREE.MeshBasicMaterial({color: 0xff4500, transparent: true, opacity: 0.9}));
+                    explosionEffect.position.set(redX.x, 1, redX.z); scene.add(explosionEffect);
+                    placedDynMeshes.forEach(d => scene.remove(d)); redX.mesh.visible = false;
+                    
+                    diamondObj.mesh = new THREE.Mesh(new THREE.OctahedronGeometry(1.1), new THREE.MeshStandardMaterial({color: 0x00ffff, metalness: 0.9, roughness: 0.1}));
+                    diamondObj.mesh.position.set(redX.x, 1.0, redX.z); scene.add(diamondObj.mesh);
+                    const dLight = new THREE.PointLight(0x00ffff, 2.0, 12); dLight.position.set(redX.x, 2, redX.z); scene.add(dLight);
+                    diamondObj.mark = createExclamationMark(); diamondObj.mark.position.set(redX.x, 2.5, redX.z); scene.add(diamondObj.mark);
+                    diamondObj.spawned = true;
+                }
+            }
+            if (explosionEffect) { explosionEffect.scale.addScalar(0.25); explosionEffect.material.opacity -= 0.06; if (explosionEffect.material.opacity <= 0) { scene.remove(explosionEffect); explosionEffect = null; } }
+
+            // SOLID AND STABLE CLIMBING TRANSITIONS
+            if (playerState === 'climbing_up') {
+                player.position.y += climbSpeed * delta;
+                player.userData.leftLeg.rotation.x = Math.sin(time*15)*0.5; player.userData.rightLeg.rotation.x = -Math.sin(time*15)*0.5;
+                player.userData.leftArm.rotation.x = -Math.sin(time*15)*0.5; player.userData.rightArm.rotation.x = Math.sin(time*15)*0.5;
+                if (player.position.y >= 16.0) { 
+                    player.position.set(-50.0, 16.0, -41.0); // Safe landing on top
+                    playerState = 'normal'; 
+                }
+            } else if (playerState === 'climbing_down') {
+                player.position.y -= climbSpeed * delta;
+                player.userData.leftLeg.rotation.x = Math.sin(time*15)*0.5; player.userData.rightLeg.rotation.x = -Math.sin(time*15)*0.5;
+                player.userData.leftArm.rotation.x = -Math.sin(time*15)*0.5; player.userData.rightArm.rotation.x = Math.sin(time*15)*0.5;
+                if (player.position.y <= 0.0) { 
+                    player.position.set(-50.0, 0.0, -35.5); // Safe landing on ground
+                    playerState = 'normal'; 
+                }
+            }
+
+            if (playerState === 'normal') {
+                player.rotation.y = camYaw + Math.PI;
+                if (!activeDialogNpc) {
+                    let isMoving = false; let mX = 0, mZ = 0; const s = 0.26;
+                    const fX = -Math.sin(camYaw); const fZ = -Math.cos(camYaw); const rX = -fZ; const rZ = fX;
+
+                    if (keys.w) { mX += fX; mZ += fZ; isMoving = true; } if (keys.s) { mX -= fX; mZ -= fZ; isMoving = true; }
+                    if (keys.a) { mX -= rX; mZ -= rZ; isMoving = true; } if (keys.d) { mX += rX; mZ += rZ; isMoving = true; }
+
+                    if (isMoving) {
+                        const len = Math.sqrt(mX*mX + mZ*mZ); 
+                        let targetX = player.position.x + (mX/len)*s;
+                        let targetZ = player.position.z + (mZ/len)*s;
+                        
+                        if (!checkCollision(targetX, player.position.z, playerRadius)) player.position.x = targetX;
+                        if (!checkCollision(player.position.x, targetZ, playerRadius)) player.position.z = targetZ;
+
+                        player.position.x = Math.max(-97, Math.min(97, player.position.x)); player.position.z = Math.max(-97, Math.min(97, player.position.z));
+                        
+                        // CLAMP PLAYER EDGES ON THE TOWER SO THEY WON'T FALL UNLESS THEY USE THE LADDER
+                        if (player.position.y > 10.0) {
+                            player.position.x = Math.max(-53.5, Math.min(-46.5, player.position.x)); 
+                            player.position.z = Math.max(-45.5, Math.min(-38.5, player.position.z));
+                        }
+
+                        const w = time * 18; player.userData.leftLeg.rotation.x = Math.sin(w)*0.6; player.userData.rightLeg.rotation.x = -Math.sin(w)*0.6;
+                        player.userData.leftArm.rotation.x = -Math.sin(w)*0.5; if (!isSwordEquipped && !isPickaxeEquipped && !isBowEquipped && !isSwinging) player.userData.rightArm.rotation.x = Math.sin(w)*0.5;
+                        player.position.y = targetBaseY + Math.abs(Math.sin(w*2))*0.12;
+                    } else {
+                        player.userData.leftLeg.rotation.x = 0; player.userData.rightLeg.rotation.x = 0; player.userData.leftArm.rotation.x = 0;
+                        if (!isSwordEquipped && !isPickaxeEquipped && !isBowEquipped && !isSwinging) player.userData.rightArm.rotation.x = 0; 
+                        player.position.y = targetBaseY;
+                    }
+
+                    if (isSwinging) {
+                        swingProgress += 0.1;
+                        if (swingProgress > 0.3 && !hasHitThisSwing) {
+                            if (isSwordEquipped) {
+                                zombies.forEach(z => {
+                                    if (z.alive && player.position.distanceTo(z.mesh.position) < 2.6) {
+                                        z.hp -= 1; hasHitThisSwing = true;
+                                        const ratio = Math.max(0, z.hp / 3); z.mesh.userData.hpGreen.scale.x = ratio; z.mesh.userData.hpGreen.position.x = - (1 - ratio) * 0.7;
+                                        if (z.hp <= 0) { z.alive = false; scene.remove(z.mesh); dynamitesInWorld.push(spawnStaticDynamite(z.mesh.position.x, z.mesh.position.z)); }
+                                    }
+                                });
+                            } else if (isPickaxeEquipped && diamondObj.spawned) {
+                                if (player.position.distanceTo(diamondObj.mesh.position) < 3.5) {
+                                    diamondObj.hp -= 1; hasHitThisSwing = true; showScreenDialog("Mining", "Struck the Holy Diamond shard! Durability remaining: " + diamondObj.hp);
+                                    diamondObj.mesh.scale.set(0.8, 0.8, 0.8); setTimeout(()=> {if(diamondObj.mesh) diamondObj.mesh.scale.set(1,1,1);}, 120);
+                                    if (diamondObj.hp <= 0) {
+                                        scene.remove(diamondObj.mesh); diamondObj.spawned = false;
+                                        if(diamondObj.mark) { scene.remove(diamondObj.mark); diamondObj.mark = null; }
+                                        collectedDiamonds++; updateUI(); document.getElementById('diamondUI').style.display = "block";
+                                        shopkeeper.userData.questMark.visible = true; 
+                                        showScreenDialog("Success!", "Incredible skill! You extracted the raw Holy Diamond. Present it to the Gunslinger.");
+                                        if (questStage === 4) questStage = 5; updateUI();
+                                    }
+                                }
+                            }
+                        }
+                        if (swingProgress >= 1.0) isSwinging = false;
+                        else player.userData.rightArm.rotation.x = -Math.PI * 0.8 + (Math.sin(swingProgress * Math.PI) * 1.8);
+                    }
+
+                    if ((isSwordEquipped || isPickaxeEquipped) && !isSwinging) player.userData.rightArm.rotation.x = -Math.PI / 2.5;
+                    if (isBowEquipped && !isSwinging) player.userData.rightArm.rotation.x = -Math.PI / 2.2;
+
+                    camera.position.set(player.position.x + Math.sin(camYaw)*Math.cos(camPitch)*camDistance, player.position.y + Math.sin(camPitch)*camDistance + 1.8, player.position.z + Math.cos(camYaw)*Math.cos(camPitch)*camDistance);
+                    camera.lookAt(player.position.x, player.position.y + 1.5, player.position.z);
+                } else {
+                    player.userData.leftLeg.rotation.x = 0; player.userData.rightLeg.rotation.x = 0; player.position.y = targetBaseY;
+                    camera.position.lerp(new THREE.Vector3(player.position.x + Math.sin(camYaw)*4, player.position.y+2.0, player.position.z + Math.cos(camYaw)*4), 0.05);
+                    camera.lookAt(activeDialogNpc.position.x, activeDialogNpc.position.y + 1.5, activeDialogNpc.position.z);
+                }
+            }
+
+            npcs.forEach((npc, i) => {
+                const ai = npc.userData.ai; if (ai.state === 'talking' || ai.state === 'fixed') return; ai.timer -= delta;
+                if (ai.state === 'idle') {
+                    if (ai.timer <= 0) {
+                        ai.targetX = npc.position.x + (Math.random()*16-8); ai.targetZ = npc.position.z + (Math.random()*16-8);
+                        if (ai.targetZ < -34) ai.targetZ = -30 + Math.random()*8;
+                        ai.state = 'walking';
+                    }
+                } else if (ai.state === 'walking') {
+                    const dx = ai.targetX - npc.position.x, dz = ai.targetZ - npc.position.z; const dist = Math.sqrt(dx*dx + dz*dz);
+                    if (dist > 0.5 && !checkCollision(npc.position.x + (dx/dist)*ai.speed, npc.position.z + (dz/dist)*ai.speed, 0.5)) {
+                        npc.position.x += (dx/dist)*ai.speed; npc.position.z += (dz/dist)*ai.speed; npc.rotation.y = Math.atan2(dx, dz);
+                        npc.userData.leftLeg.rotation.x = Math.sin(time*8+i)*0.4; npc.userData.rightLeg.rotation.x = -Math.sin(time*8+i)*0.4;
+                    } else { ai.state = 'idle'; ai.timer = Math.random()*4+2; }
+                }
+            });
+
+            if (diamondObj.spawned && diamondObj.mesh) diamondObj.mesh.rotation.y += 0.02;
+            renderer.render(scene, camera);
+        }
+        window.addEventListener('resize', () => { camera.aspect = window.innerWidth / window.innerHeight; camera.updateProjectionMatrix(); renderer.setSize(window.innerWidth, window.innerHeight); });
+        animate();
+    </script>
+</body>
+</html>

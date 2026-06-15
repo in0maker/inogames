@@ -1,0 +1,746 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Escape Tsunami</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Impact', 'Arial Black', sans-serif;
+            user-select: none;
+            -webkit-user-select: none;
+        }
+
+        body, html {
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            background-color: #a0e0ff;
+        }
+
+        #canvas-container {
+            width: 100%;
+            height: 100%;
+            position: absolute;
+            top: 0;
+            left: 0;
+            z-index: 1;
+        }
+
+        /* UI Overlay */
+        .ui-layer {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 10;
+            pointer-events: none;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            padding: 20px;
+        }
+
+        #hud {
+            display: flex;
+            justify-content: space-between;
+            width: 100%;
+            font-size: calc(1.1rem + 0.8vw);
+            color: #fff;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.7);
+        }
+
+        .tsunami-alert {
+            position: absolute;
+            top: 15%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(255, 30, 30, 0.95);
+            color: #fff;
+            padding: 12px 25px;
+            font-size: calc(1rem + 1vw);
+            border-radius: 8px;
+            text-align: center;
+            border: 3px solid white;
+            box-shadow: 0 0 15px rgba(255,0,0,0.6);
+            animation: blink 0.4s infinite alternate;
+            display: none;
+        }
+
+        @keyframes blink { from { opacity: 1; } to { opacity: 0.4; } }
+
+        /* Screens & Shop Container */
+        .screen {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(140, 215, 255, 0.98);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 20;
+            text-align: center;
+            padding: 20px;
+            overflow-y: auto;
+        }
+
+        .hidden { display: none !important; }
+
+        h1 {
+            font-size: calc(2rem + 2vw);
+            color: #ff0055;
+            text-shadow: 3px 3px 0px #fff;
+            margin-bottom: 5px;
+        }
+
+        .stats-text {
+            font-size: calc(0.9rem + 0.5vw);
+            color: #002244;
+            margin-bottom: 15px;
+            font-weight: bold;
+        }
+
+        /* Shop System Design */
+        .shop-container {
+            background: rgba(255, 255, 255, 0.85);
+            border: 4px solid #fff;
+            border-radius: 15px;
+            padding: 15px;
+            width: 90%;
+            max-width: 500px;
+            margin-bottom: 20px;
+            box-shadow: 0 8px 16px rgba(0,0,0,0.15);
+        }
+        .shop-title {
+            font-size: 1.5rem;
+            color: #333;
+            margin-bottom: 10px;
+            border-bottom: 2px dashed #ff0055;
+            padding-bottom: 5px;
+        }
+        .shop-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: #fff;
+            padding: 10px;
+            margin: 8px 0;
+            border-radius: 8px;
+            border-left: 5px solid #00bbff;
+        }
+        .shop-info { text-align: left; }
+        .shop-name { font-size: 1.1rem; color: #111; }
+        .shop-desc { font-size: 0.8rem; color: #666; font-family: sans-serif; }
+        .shop-btn {
+            background: #28a745;
+            color: white;
+            border: 2px solid white;
+            padding: 8px 15px;
+            border-radius: 20px;
+            cursor: pointer;
+            font-size: 1rem;
+            box-shadow: 0 3px 0 #1e7e34;
+        }
+        .shop-btn:disabled {
+            background: #6c757d;
+            box-shadow: none;
+            cursor: not-allowed;
+        }
+
+        .btn {
+            padding: 12px 40px;
+            font-size: calc(1.2rem + 0.5vw);
+            color: #fff;
+            background: #ff0055;
+            border: 4px solid #fff;
+            border-radius: 50px;
+            cursor: pointer;
+            pointer-events: auto;
+            box-shadow: 0 6px 0 #b3003b, 0 10px 20px rgba(0,0,0,0.2);
+        }
+        .btn:active { transform: translateY(4px); box-shadow: 0 2px 0 #b3003b; }
+
+        /* Controls Layout */
+        #controls-overlay {
+            position: absolute;
+            bottom: 20px;
+            left: 0;
+            width: 100%;
+            display: flex;
+            justify-content: space-between;
+            padding: 0 20px;
+            z-index: 15;
+            pointer-events: none;
+        }
+
+        .control-group { display: flex; gap: 12px; pointer-events: auto; }
+
+        .touch-btn {
+            width: 70px;
+            height: 70px;
+            background: rgba(255, 255, 255, 0.55);
+            border: 3px solid rgba(255, 255, 255, 0.9);
+            border-radius: 50%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 1.8rem;
+            backdrop-filter: blur(4px);
+            touch-action: none;
+        }
+        .touch-btn:active { background: rgba(255, 255, 255, 0.9); transform: scale(0.95); }
+        
+        #btn-fly { background: rgba(255, 230, 0, 0.6); border-color: #ffea00; display: none; }
+
+        #fuel-bar-container {
+            position: absolute;
+            bottom: 110px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 160px;
+            height: 12px;
+            background: rgba(0,0,0,0.5);
+            border: 2px solid white;
+            border-radius: 6px;
+            display: none;
+            z-index: 14;
+        }
+        #fuel-bar { width: 100%; height: 100%; background: #ffea00; border-radius: 4px; transition: width 0.1s; }
+    </style>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+</head>
+<body>
+
+    <div id="canvas-container"></div>
+
+    <div class="ui-layer">
+        <div id="hud" class="hidden">
+            <div>ROAD: <span id="score-val">0</span>m</div>
+            <div style="color: #ffea00;">ABSURD PIECE: <span id="cash-val">0</span> 📦</div>
+        </div>
+        <div id="alert-banner" class="tsunami-alert">⚠️ THE TSUNAMI HAS GROWN AND ACCELERATED! ⚠️<br>FLEW TO A SHELTER OR FLY TO THE SKIES!</div>
+    </div>
+
+    <!-- Fuel indicator for Jetpack -->
+    <div id="fuel-bar-container"><div id="fuel-bar"></div></div>
+
+    <!-- Controls Overlay -->
+    <div id="controls-overlay" class="hidden">
+        <div class="control-group">
+            <div class="touch-btn" id="btn-left">⬅️</div>
+            <div class="touch-btn" id="btn-right">➡️</div>
+        </div>
+        <div class="control-group">
+            <div class="touch-btn" id="btn-fly">🚀</div>
+            <div class="touch-btn" id="btn-backward">🛑</div>
+            <div class="touch-btn" id="btn-forward">🏃‍♂️</div>
+        </div>
+    </div>
+
+    <!-- Start Screen & Shop -->
+    <div id="start-screen" class="screen">
+        <h1>MEGA TSUNAMI ESCAPE</h1>
+        <div class="stats-text">YOUR WALLET: <span class="global-cash">0</span> Recycled Part</div>
+        
+        <div class="shop-container">
+            <div class="shop-title">CAPTAIN'S DEVELOPMENT STORE 🛒</div>
+            <div class="shop-item">
+                <div class="shop-info">
+                    <div class="shop-name">Super Shoes (Speed) <span id="lvl-speed">Lvl 0</span></div>
+                    <div class="shop-desc">It permanently increases maximum forward running speed.</div>
+                </div>
+                <button class="shop-btn" id="buy-speed" onclick="upgrade('speed')">Price: 5</button>
+            </div>
+            <div class="shop-item">
+                <div class="shop-info">
+                    <div class="shop-name">Jetpack<span id="lvl-fly">Lvl 0</span></div>
+                    <div class="shop-desc">Swing through the air and escape the tsunami by pressing the SPACE key! 🚀</div>
+                </div>
+                <button class="shop-btn" id="buy-fly" onclick="upgrade('fly')">Price: 10</button>
+            </div>
+        </div>
+
+        <button class="btn" onclick="startGame()">START THE RACE</button>
+    </div>
+
+    <!-- Game Over Screen -->
+    <div id="game-over-screen" class="screen hidden">
+        <h1 style="color: #ff0000;">SWALLOWED BY WAVES!</h1>
+        <div class="stats-text" id="final-stats">The tsunami caught you.</div>
+        <div class="stats-text">YOUR CURRENT WALLET: <span class="global-cash">0</span> Piece</div>
+        
+        <div id="shop-mirror"></div> <!-- Cloned shop maps here dynamically -->
+
+        <button class="btn" onclick="startGame()">RESTART</button>
+    </div>
+
+    <script>
+        let scene, camera, renderer, playerGroup, leftArm, rightArm;
+        let gameActive = false;
+        let score = 0;
+        
+        // Permanent Economy Variables
+        let totalItemsCollected = 0; // Current run balance
+        let globalBank = 0;          // Saved cash bank memory
+        
+        // Shop Levels Data
+        let upgrades = { speed: 0, fly: 0 };
+        const maxUpgradeLvl = 5;
+        const upgradeCosts = {
+            speed: [5, 12, 25, 50, 100],
+            fly: [10, 25, 55, 90, 150]
+        };
+
+        // MEGA ROAD WIDTH
+        const laneWidth = 18.0; 
+        let currentRunSpeed = 0;
+        
+        // Flight physics system
+        let isFlying = false;
+        let jetpackFuel = 100;
+        let maxFuel = 100;
+
+        let entities = [];
+        let segments = [];
+        
+        // Dynamic Difficulty Tsunami Engine
+        let tsunamiActive = false;
+        let tsunamiMesh;
+        let tsunamiTimer = 0;
+        let dynamicTsunamiSpeed = 0.55;
+
+        const keys = {};
+        const mobileControls = { left: false, right: false, forward: false, backward: false, fly: false };
+
+        function init3D() {
+            scene = new THREE.Scene();
+            scene.background = new THREE.Color(0xa0e0ff); 
+            scene.fog = new THREE.FogExp2(0xa0e0ff, 0.008);
+
+            camera = new THREE.PerspectiveCamera(65, window.innerWidth / window.innerHeight, 0.1, 1000);
+            
+            renderer = new THREE.WebGLRenderer({ antialias: true });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.shadowMap.enabled = true;
+            document.getElementById('canvas-container').appendChild(renderer.domElement);
+
+            scene.add(new THREE.AmbientLight(0xffffff, 0.85));
+            const sunLight = new THREE.DirectionalLight(0xffffff, 1.1);
+            sunLight.position.set(50, 70, 20);
+            scene.add(sunLight);
+
+            playerGroup = new THREE.Group();
+            scene.add(playerGroup);
+            camera.position.set(0, 1.65, 0); 
+            playerGroup.add(camera);
+
+            // Arm Models Rigging
+            const armMat = new THREE.MeshStandardMaterial({ color: 0xffe0bd });
+            const sleeveMat = new THREE.MeshStandardMaterial({ color: 0x222222 }); 
+
+            leftArm = new THREE.Group();
+            const lSleeve = new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.07, 0.28), sleeveMat);
+            lSleeve.rotation.x = Math.PI / 2.3; leftArm.add(lSleeve);
+            const lHand = new THREE.Mesh(new THREE.SphereGeometry(0.065, 8, 8), armMat);
+            lHand.position.set(0, 0, -0.18); leftArm.add(lHand);
+            leftArm.position.set(-0.45, 1.15, -0.55); playerGroup.add(leftArm);
+
+            rightArm = new THREE.Group();
+            const rSleeve = new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.07, 0.28), sleeveMat);
+            rSleeve.rotation.x = Math.PI / 2.3; rightArm.add(rSleeve);
+            const rHand = new THREE.Mesh(new THREE.SphereGeometry(0.065, 8, 8), armMat);
+            rHand.position.set(0, 0, -0.18); rightArm.add(rHand);
+            rightArm.position.set(0.45, 1.15, -0.55); playerGroup.add(rightArm);
+
+            // Wide scalable tsunami wave layout
+            tsunamiMesh = new THREE.Mesh(
+                new THREE.BoxGeometry(laneWidth, 14, 4),
+                new THREE.MeshStandardMaterial({ color: 0x0066ff, transparent: true, opacity: 0.85 })
+            );
+            tsunamiMesh.position.set(0, 7, -500); 
+            scene.add(tsunamiMesh);
+
+            const crest = new THREE.Mesh(new THREE.BoxGeometry(laneWidth + 0.1, 0.5, 4.1), new THREE.MeshBasicMaterial({ color: 0xffffff }));
+            crest.position.y = 6.9; tsunamiMesh.add(crest);
+
+            for (let i = 0; i < 20; i++) {
+                spawnTrackSegment(-i * 15);
+            }
+            updateShopUI();
+        }
+
+        function spawnTrackSegment(zPos) {
+            const segmentGroup = new THREE.Group();
+            segmentGroup.position.z = zPos;
+
+            // MEGA HIGHWAY PLATFORM
+            const road = new THREE.Mesh(new THREE.PlaneGeometry(laneWidth, 15), new THREE.MeshStandardMaterial({ color: 0x252529, roughness: 0.7 }));
+            road.rotation.x = -Math.PI / 2;
+            segmentGroup.add(road);
+
+            // Lateral environments lines
+            const floorGeo = new THREE.PlaneGeometry(60, 15);
+            const floorMat = new THREE.MeshLambertMaterial({ color: 0x8cd755 });
+            const leftFloor = new THREE.Mesh(floorGeo, floorMat); leftFloor.rotation.x = -Math.PI / 2; leftFloor.position.x = -39; segmentGroup.add(leftFloor);
+            const rightFloor = leftFloor.clone(); rightFloor.position.x = 39; segmentGroup.add(rightFloor);
+
+            let hasAlcove = Math.random() > 0.5;
+            let alcoveSide = Math.random() > 0.5 ? -1 : 1;
+            const wallHeight = 5.0;
+            const wallMat = new THREE.MeshStandardMaterial({ color: 0xffffff }); // Absolute White solid walls
+
+            if (hasAlcove) {
+                const wSection = new THREE.BoxGeometry(0.4, wallHeight, 4.0);
+                if (alcoveSide === -1) {
+                    const w1 = new THREE.Mesh(wSection, wallMat); w1.position.set(-laneWidth/2, wallHeight/2, -5.5); segmentGroup.add(w1);
+                    const w2 = new THREE.Mesh(wSection, wallMat); w2.position.set(-laneWidth/2, wallHeight/2, 5.5); segmentGroup.add(w2);
+                    
+                    const bunker = new THREE.Mesh(new THREE.BoxGeometry(4, wallHeight, 7), new THREE.MeshStandardMaterial({ color: 0x00ff33, emissive: 0x002205 }));
+                    bunker.position.set(-laneWidth/2 - 2, wallHeight/2, 0); segmentGroup.add(bunker);
+                    segmentGroup.userData = { alcove: true, side: -1 };
+                } else {
+                    const w1 = new THREE.Mesh(wSection, wallMat); w1.position.set(laneWidth/2, wallHeight/2, -5.5); segmentGroup.add(w1);
+                    const w2 = new THREE.Mesh(wSection, wallMat); w2.position.set(laneWidth/2, wallHeight/2, 5.5); segmentGroup.add(w2);
+                    
+                    const bunker = new THREE.Mesh(new THREE.BoxGeometry(4, wallHeight, 7), new THREE.MeshStandardMaterial({ color: 0x00ff33, emissive: 0x002205 }));
+                    bunker.position.set(laneWidth/2 + 2, wallHeight/2, 0); segmentGroup.add(bunker);
+                    segmentGroup.userData = { alcove: true, side: 1 };
+                }
+                const straightWall = new THREE.Mesh(new THREE.BoxGeometry(0.4, wallHeight, 15), wallMat);
+                straightWall.position.set(-alcoveSide * (laneWidth/2), wallHeight/2, 0); segmentGroup.add(straightWall);
+            } else {
+                const edgeWall = new THREE.BoxGeometry(0.4, wallHeight, 15);
+                const lW = new THREE.Mesh(edgeWall, wallMat); lW.position.set(-laneWidth/2, wallHeight/2, 0); segmentGroup.add(lW);
+                const rW = new THREE.Mesh(edgeWall, wallMat); rW.position.set(laneWidth/2, wallHeight/2, 0); segmentGroup.add(rW);
+
+                if (Math.random() > 0.3) {
+                    spawnAbsurdItem(segmentGroup);
+                }
+            }
+
+            scene.add(segmentGroup);
+            segments.push(segmentGroup);
+        }
+
+        // ABSÜRT EŞYA HAVUZU (Silly Loot Pool)
+        function spawnAbsurdItem(parentGroup) {
+            const lootGroup = new THREE.Group();
+            const roll = Math.random();
+            let itemType = "toilet";
+
+            if (roll < 0.35) {
+                // 1. Skibidi Toilet 🚽
+                itemType = "toilet";
+                const wMat = new THREE.MeshStandardMaterial({ color: 0xffffff });
+                const bowl = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.2, 0.4, 8), wMat); bowl.position.y = 0.2; lootGroup.add(bowl);
+                const tank = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.5, 0.4), wMat); tank.position.set(-0.25, 0.45, 0); lootGroup.add(tank);
+                const head = new THREE.Mesh(new THREE.SphereGeometry(0.12, 6, 6), new THREE.MeshLambertMaterial({ color: 0xffd2a1 })); head.position.set(0, 0.45, 0); lootGroup.add(head);
+            } else if (roll < 0.70) {
+                // 2. Dev Paslı Makas ✂️
+                itemType = "scissors";
+                const ironMat = new THREE.MeshStandardMaterial({ color: 0xaaaaaa, roughness: 0.3 });
+                const blade1 = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.8, 0.03), ironMat); blade1.rotation.z = 0.4; blade1.position.y = 0.4; lootGroup.add(blade1);
+                const blade2 = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.8, 0.03), ironMat); blade2.rotation.z = -0.4; blade2.position.y = 0.4; lootGroup.add(blade2);
+                const ring = new THREE.Mesh(new THREE.TorusGeometry(0.1, 0.03, 4, 8), new THREE.MeshBasicMaterial({color: 0xff0000})); ring.position.set(0,0.8,0); lootGroup.add(ring);
+            } else {
+                // 3. Plastik Sarı Ördek 🦆
+                itemType = "duck";
+                const yellowMat = new THREE.MeshStandardMaterial({ color: 0xffcc00, roughness: 0.5 });
+                const body = new THREE.Mesh(new THREE.SphereGeometry(0.25, 8, 8), yellowMat); body.position.y = 0.25; lootGroup.add(body);
+                const head = new THREE.Mesh(new THREE.SphereGeometry(0.15, 8, 8), yellowMat); head.position.set(0.15, 0.4, 0); lootGroup.add(head);
+                const beak = new THREE.Mesh(new THREE.ConeGeometry(0.06, 0.12, 4), new THREE.MeshBasicMaterial({ color: 0xff5500 })); beak.rotation.z = -Math.PI/2; beak.position.set(0.3, 0.4, 0); lootGroup.add(beak);
+            }
+
+            lootGroup.position.set((Math.random() - 0.5) * (laneWidth - 3), 0, (Math.random() - 0.5) * 8);
+            parentGroup.add(lootGroup);
+            entities.push({ mesh: lootGroup, parent: parentGroup, collected: false, type: itemType });
+        }
+
+        // Shop Engine Logic
+        function updateShopUI() {
+            document.querySelectorAll('.global-cash').forEach(el => el.innerText = globalBank);
+            
+            document.getElementById('lvl-speed').innerText = `Lvl ${upgrades.speed}`;
+            if (upgrades.speed >= maxUpgradeLvl) {
+                document.getElementById('buy-speed').innerText = "MAX";
+                document.getElementById('buy-speed').disabled = true;
+            } else {
+                let cost = upgradeCosts.speed[upgrades.speed];
+                document.getElementById('buy-speed').innerText = `Al: ${cost} 📦`;
+                document.getElementById('buy-speed').disabled = (globalBank < cost);
+            }
+
+            document.getElementById('lvl-fly').innerText = `Lvl ${upgrades.fly}`;
+            if (upgrades.fly >= maxUpgradeLvl) {
+                document.getElementById('buy-fly').innerText = "MAX";
+                document.getElementById('buy-fly').disabled = true;
+            } else {
+                let cost = upgradeCosts.fly[upgrades.fly];
+                document.getElementById('buy-fly').innerText = `Al: ${cost} 📦`;
+                document.getElementById('buy-fly').disabled = (globalBank < cost);
+            }
+
+            // Sync structural duplication onto Game Over panel
+            const originalShop = document.querySelector('.shop-container');
+            const mirrorContainer = document.getElementById('shop-mirror');
+            if(mirrorContainer && originalShop) {
+                mirrorContainer.innerHTML = originalShop.innerHTML;
+            }
+        }
+
+        function upgrade(type) {
+            let currentLvl = upgrades[type];
+            if (currentLvl >= maxUpgradeLvl) return;
+
+            let cost = upgradeCosts[type][currentLvl];
+            if (globalBank >= cost) {
+                globalBank -= cost;
+                upgrades[type]++;
+                updateShopUI();
+            }
+        }
+
+        function startGame() {
+            score = 0;
+            totalItemsCollected = 0;
+            currentRunSpeed = 0;
+            tsunamiActive = false;
+            tsunamiTimer = 0;
+            dynamicTsunamiSpeed = 0.55; // Base starting velocity reset
+            
+            // Jetpack configuration states
+            jetpackFuel = 100 + (upgrades.fly * 30);
+            maxFuel = jetpackFuel;
+
+            playerGroup.position.set(0, 0, 0);
+            camera.position.y = 1.65;
+
+            document.getElementById('start-screen').className = 'screen hidden';
+            document.getElementById('game-over-screen').className = 'screen hidden';
+            document.getElementById('hud').classList.remove('hidden');
+            
+            // Conditional overlay render logic
+            if ('touchstart' in window || navigator.maxTouchPoints > 0) {
+                document.getElementById('controls-overlay').classList.remove('hidden');
+                document.getElementById('btn-fly').style.display = (upgrades.fly > 0) ? 'flex' : 'none';
+            }
+            document.getElementById('fuel-bar-container').style.display = (upgrades.fly > 0) ? 'block' : 'none';
+
+            entities.forEach(e => { if(e.mesh.parent) e.mesh.parent.remove(e.mesh); });
+            entities = [];
+            gameActive = true;
+        }
+
+        function gameOver() {
+            gameActive = false;
+            globalBank += totalItemsCollected; // Bank earnings safely
+            updateShopUI();
+
+            document.getElementById('hud').classList.add('hidden');
+            document.getElementById('fuel-bar-container').style.display = 'none';
+            document.getElementById('alert-banner').style.display = 'none';
+            
+            document.getElementById('game-over-screen').classList.remove('hidden');
+            document.getElementById('final-stats').innerHTML = `The Path Taken: <strong>${Math.floor(score)}m</strong><br>Collected in this Race: <strong>${totalItemsCollected}</strong> Piece`;
+        }
+
+        // Window Event Bindings
+        window.addEventListener('keydown', (e) => { keys[e.key.toLowerCase()] = true; });
+        window.addEventListener('keyup', (e) => { keys[e.key.toLowerCase()] = false; });
+
+        function setupMobileBtn(id, targetField) {
+            const btn = document.getElementById(id);
+            btn.addEventListener('touchstart', (e) => { e.preventDefault(); mobileControls[targetField] = true; });
+            btn.addEventListener('touchend', (e) => { e.preventDefault(); mobileControls[targetField] = false; });
+        }
+        setupMobileBtn('btn-left', 'left');
+        setupMobileBtn('btn-right', 'right');
+        setupMobileBtn('btn-forward', 'forward');
+        setupMobileBtn('btn-backward', 'backward');
+        setupMobileBtn('btn-fly', 'fly');
+
+        // Gameloop Processing Heartbeat
+        function animate() {
+            requestAnimationFrame(animate);
+
+            if (gameActive) {
+                if(currentRunSpeed > 0) {
+                    score += currentRunSpeed * 0.4;
+                }
+                document.getElementById('score-val').innerText = Math.floor(score);
+                document.getElementById('cash-val').innerText = totalItemsCollected;
+
+                // Dynamic Progression: Tsunami gets incrementally faster based on score depth
+                dynamicTsunamiSpeed = 0.55 + (score * 0.0007);
+
+                // 1. DIRECTIONAL MOVEMENT ENGINE
+                let sideMove = 0;
+                if (keys['a'] || keys['arrowleft'] || mobileControls.left) sideMove = -0.18;
+                if (keys['d'] || keys['arrowright'] || mobileControls.right) sideMove = 0.18;
+                playerGroup.position.x += sideMove;
+
+                // Speed calculations linked directly to Shop Multipliers
+                let speedBonus = upgrades.speed * 0.06;
+                let maxForwardSpeed = 0.45 + speedBonus;
+                let maxBackwardSpeed = -0.15;
+
+                let targetSpeed = 0;
+                if (keys['w'] || keys['arrowup'] || mobileControls.forward) targetSpeed = maxForwardSpeed;
+                if (keys['s'] || keys['arrowdown'] || mobileControls.backward) targetSpeed = maxBackwardSpeed;
+
+                currentRunSpeed = THREE.MathUtils.lerp(currentRunSpeed, targetSpeed, 0.08);
+
+                // 2. FLYING / FLIGHT JETPACK PHYSICS MECHANIC
+                let wantsToFly = (keys[' '] || mobileControls.fly) && (upgrades.fly > 0) && (jetpackFuel > 0);
+                
+                if (wantsToFly) {
+                    isFlying = true;
+                    jetpackFuel -= 0.6; // Fuel consumption burn rates
+                    playerGroup.position.y = THREE.MathUtils.lerp(playerGroup.position.y, 13.0, 0.07); // Ascend safely above roads
+                } else {
+                    isFlying = false;
+                    // Gravity falls back down safely onto pavement floor surface limits
+                    playerGroup.position.y = THREE.MathUtils.lerp(playerGroup.position.y, 0, 0.1);
+                    if (playerGroup.position.y < 0.05) {
+                        playerGroup.position.y = 0;
+                        if(jetpackFuel < maxFuel) jetpackFuel += 0.3; // Recharge ground generator
+                    }
+                }
+                
+                // Visual Fuel UI updater bar calculations
+                if(upgrades.fly > 0) {
+                    document.getElementById('fuel-bar').style.width = `${(jetpackFuel / maxFuel) * 100}%`;
+                }
+
+                // 3. SECURE COLLISION CLAMPING (No White Wall clipping bugs allowed)
+                let minAllowedX = -laneWidth / 2 + 0.45;
+                let maxAllowedX = laneWidth / 2 - 0.45;
+
+                // Track and probe alcove exceptions only while grounded
+                if (playerGroup.position.y < 4.0) {
+                    segments.forEach(seg => {
+                        if (seg.position.z > -7.5 && seg.position.z < 7.5) {
+                            if (seg.userData.alcove) {
+                                let localZ = -seg.position.z;
+                                if (localZ > -3.5 && localZ < 3.5) {
+                                    if (seg.userData.side === -1) minAllowedX = -laneWidth / 2 - 3.5;
+                                    else maxAllowedX = laneWidth / 2 + 3.5;
+                                }
+                            }
+                        }
+                    });
+                } else {
+                    // Flying over the walls! Expand flight arena boundaries marginally
+                    minAllowedX = -laneWidth / 2 - 4.0;
+                    maxAllowedX = laneWidth / 2 + 4.0;
+                }
+
+                playerGroup.position.x = THREE.MathUtils.clamp(playerGroup.position.x, minAllowedX, maxAllowedX);
+
+                // 4. ANIMATION BODY BOUNCE MATRICES
+                if (Math.abs(currentRunSpeed) > 0.02 && !isFlying) {
+                    let bobCycle = score * 1.5;
+                    camera.position.y = 1.65 + Math.sin(bobCycle) * 0.04;
+                    leftArm.position.set(-0.45, 1.15 + Math.sin(bobCycle) * 0.08, -0.55 + Math.cos(bobCycle) * 0.08);
+                    rightArm.position.set(0.45, 1.15 + Math.sin(bobCycle + Math.PI) * 0.08, -0.55 + Math.cos(bobCycle + Math.PI) * 0.08);
+                } else if(isFlying) {
+                    // Flight rigid posture visuals
+                    camera.position.y = 1.65;
+                    leftArm.position.set(-0.45, 1.0, -0.4);
+                    rightArm.position.set(0.45, 1.0, -0.4);
+                } else {
+                    camera.position.y = 1.65;
+                    leftArm.position.set(-0.45, 1.15, -0.55);
+                    rightArm.position.set(0.45, 1.15, -0.55);
+                }
+
+                // 5. SCENERY RECYCLING DISPLACEMENTS
+                for (let i = segments.length - 1; i >= 0; i--) {
+                    const segment = segments[i];
+                    segment.position.z += currentRunSpeed;
+
+                    if (segment.position.z > 15) {
+                        let maxZ = -15;
+                        segments.forEach(s => { if(s.position.z < maxZ) maxZ = s.position.z; });
+                        scene.remove(segment);
+                        segments.splice(i, 1);
+                        spawnTrackSegment(maxZ - 15);
+                    }
+                }
+
+                // 6. TSUNAMI RUNTIME OVERRIDES
+                tsunamiTimer++;
+                if (!tsunamiActive && tsunamiTimer > 280) { 
+                    tsunamiActive = true;
+                    tsunamiMesh.position.z = -320; 
+                    document.getElementById('alert-banner').style.display = 'block';
+                }
+
+                if (tsunamiActive) {
+                    tsunamiMesh.position.z += dynamicTsunamiSpeed + currentRunSpeed;
+                    tsunamiMesh.position.y = 7 + Math.sin(score * 0.4) * 0.2;
+
+                    // Absolute intersection logic checks
+                    if (tsunamiMesh.position.z >= -2.0 && tsunamiMesh.position.z <= 2.0) {
+                        const playerIsOnMainRoad = Math.abs(playerGroup.position.x) < (laneWidth / 2 - 0.1);
+                        
+                        // FLIGHT ADVANTAGE: If flying high above 9.5 meters, you safely coast completely over the crest wave!
+                        const safeByFlying = playerGroup.position.y > 9.5;
+
+                        if (playerIsOnMainRoad && !safeByFlying) {
+                            gameOver();
+                        }
+                    }
+
+                    if (tsunamiMesh.position.z > 15) {
+                        tsunamiActive = false;
+                        tsunamiTimer = 0;
+                        tsunamiMesh.position.z = -500;
+                        document.getElementById('alert-banner').style.display = 'none';
+                    }
+                }
+
+                // 7. LOOT BOX SCANNER EXTENSIONS
+                for (let i = entities.length - 1; i >= 0; i--) {
+                    const item = entities[i];
+                    const worldPos = new THREE.Vector3();
+                    item.mesh.getWorldPosition(worldPos);
+
+                    // Vertical height-inclusive bounding test bounds
+                    const dist = playerGroup.position.distanceTo(worldPos);
+                    if (dist < 1.6 && !item.collected) {
+                        item.collected = true;
+                        totalItemsCollected++; // Add cash parameters
+                        item.mesh.parent.remove(item.mesh);
+                        entities.splice(i, 1);
+                        continue;
+                    }
+
+                    if (worldPos.z > 8) {
+                        entities.splice(i, 1);
+                    }
+                }
+            }
+
+            renderer.render(scene, camera);
+        }
+
+        window.addEventListener('resize', () => {
+            if(!camera || !renderer) return;
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+
+        init3D();
+        animate();
+    </script>
+</body>
+</html>
