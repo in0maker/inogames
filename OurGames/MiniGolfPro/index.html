@@ -1,0 +1,553 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mini Golf Pro - Multiplayer & Mazes</title>
+    <style>
+        body {
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            background-color: #222;
+            margin: 0;
+            color: white;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            user-select: none;
+        }
+        #gameContainer { position: relative; }
+        canvas {
+            background-color: #4CAF50;
+            border: 8px solid #2E7D32;
+            border-radius: 10px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.8);
+            cursor: crosshair;
+            display: block;
+        }
+        #ui { text-align: center; margin-bottom: 10px; width: 700px; display: flex; justify-content: space-between; align-items: flex-end; }
+        .stats { text-align: left; }
+        .turn-indicator { text-align: right; font-size: 1.5em; font-weight: bold; text-transform: uppercase; }
+        
+        h1 { margin: 0 0 5px 0; font-size: 1.8em; text-align: left; }
+        p { margin: 5px 0; color: #aaa; }
+        
+        #winScreen {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0, 0, 0, 0.85); border-radius: 10px;
+            display: flex; flex-direction: column; justify-content: center; align-items: center;
+            opacity: 0; pointer-events: none; transition: opacity 0.3s ease; z-index: 10;
+        }
+        #winScreen.active { opacity: 1; pointer-events: all; }
+        #winScreen h2 { color: #4CAF50; font-size: 2.5em; margin-bottom: 10px; }
+        #winScreen button {
+            padding: 10px 20px; font-size: 1.2em; background-color: #4CAF50;
+            color: white; border: none; border-radius: 5px; cursor: pointer; margin-top: 20px;
+        }
+        #winScreen button:hover { background-color: #45a049; }
+        
+        #modeBtn {
+            position: absolute; bottom: 20px; right: 20px;
+            padding: 12px 20px; font-size: 1.1em; font-weight: bold;
+            background-color: #FFC107; color: #222; border: none; border-radius: 8px; cursor: pointer;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.5); transition: 0.2s;
+        }
+        #modeBtn:hover { background-color: #ffca28; transform: translateY(-2px); }
+    </style>
+</head>
+<body>
+
+    <div id="ui">
+        <div class="stats">
+            <h1>Mini Golf Pro</h1>
+            <p>Level: <strong id="levelDisplay" style="color: #FFC107;">1 / 7</strong></p>
+            <p id="strokesDisplay">Strokes: <strong style="color: #3498db;">0</strong></p>
+        </div>
+        <div class="turn-indicator" id="turnDisplay" style="color: #3498db;">Blue's Turn!</div>
+    </div>
+
+    <div id="gameContainer">
+        <canvas id="gameCanvas" width="700" height="400"></canvas>
+        <div id="winScreen">
+            <h2 id="winTitle">In the Hole!</h2>
+            <p id="winText">Level completed.</p>
+            <button id="nextLevelBtn" onclick="nextLevel()">Next Level</button>
+        </div>
+    </div>
+    
+    <button id="modeBtn" onclick="togglePlayerMode()">Switch to 2P</button>
+
+    <script>
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        const levelDisplay = document.getElementById('levelDisplay');
+        const strokesDisplay = document.getElementById('strokesDisplay');
+        const turnDisplay = document.getElementById('turnDisplay');
+        const winScreen = document.getElementById('winScreen');
+        const winText = document.getElementById('winText');
+        const winTitle = document.getElementById('winTitle');
+        const nextLevelBtn = document.getElementById('nextLevelBtn');
+        const modeBtn = document.getElementById('modeBtn');
+
+        let isTwoPlayer = false;
+        let currentPlayer = 0; // 0: Blue, 1: Red
+        let isDragging = false;
+        let mouseX = 0, mouseY = 0;
+        let isWin = false;
+        let currentLevelIndex = 0;
+        let shotTaken = false;
+
+        const normalFriction = 0.98; 
+        const sandFriction = 0.93;   
+        const maxDragDistance = 120; 
+
+        // Player setups
+        let balls = [];
+        const hole = { x: 0, y: 0, radius: 15, color: '#111' };
+        
+        let obstacles = [];
+        let sandTraps = [];
+        let sandGrains = []; 
+        let dustParticles = []; 
+        let propellers = []; 
+        let glassTunnels = []; 
+
+        // LEVEL DESIGNS (7 Levels)
+        const levels = [
+            { // Level 1: Basic
+                ballStart: { x: 80, y: 200 }, holeStart: { x: 600, y: 200 },
+                obstacles: [ { x: 340, y: 0, width: 20, height: 150 }, { x: 340, y: 250, width: 20, height: 150 } ],
+                sandTraps: [], propellers: [], glassTunnels: []
+            },
+            { // Level 2: Zigzag
+                ballStart: { x: 80, y: 80 }, holeStart: { x: 600, y: 320 },
+                obstacles: [ { x: 200, y: 0, width: 20, height: 260 }, { x: 450, y: 140, width: 20, height: 260 } ],
+                sandTraps: [], propellers: [], glassTunnels: []
+            },
+            { // Level 3: The Box
+                ballStart: { x: 100, y: 200 }, holeStart: { x: 480, y: 200 },
+                obstacles: [
+                    { x: 250, y: 0, width: 20, height: 300 }, { x: 380, y: 100, width: 170, height: 20 },
+                    { x: 550, y: 100, width: 20, height: 200 }, { x: 380, y: 280, width: 190, height: 20 }
+                ],
+                sandTraps: [], propellers: [], glassTunnels: []
+            },
+            { // Level 4: Sand Traps
+                ballStart: { x: 80, y: 200 }, holeStart: { x: 620, y: 200 },
+                obstacles: [ { x: 220, y: 60, width: 20, height: 100 }, { x: 460, y: 240, width: 20, height: 100 } ],
+                sandTraps: [
+                    { x: 180, y: 160, width: 120, height: 180 }, { x: 400, y: 60, width: 140, height: 180 }, { x: 280, y: 0, width: 80, height: 80 }
+                ],
+                propellers: [], glassTunnels: []
+            },
+            { // Level 5: Windmill
+                ballStart: { x: 80, y: 200 }, holeStart: { x: 620, y: 200 },
+                obstacles: [ { x: 340, y: 0, width: 20, height: 80 }, { x: 340, y: 320, width: 20, height: 80 } ],
+                sandTraps: [], glassTunnels: [],
+                propellers: [ { x: 350, y: 200, length: 180, width: 20, angle: 0, speed: 0.05 } ]
+            },
+            { // Level 6: Giant Tunnels
+                ballStart: { x: 60, y: 200 }, holeStart: { x: 640, y: 200 },
+                obstacles: [
+                    { x: 200, y: 0, width: 300, height: 155 }, { x: 200, y: 245, width: 300, height: 155 }
+                ],
+                sandTraps: [], propellers: [],
+                glassTunnels: [ { x: 200, y: 155, width: 300, height: 90 } ]
+            },
+            { // Level 7: Pipe Maze (NEW)
+                ballStart: { x: 50, y: 200 }, holeStart: { x: 640, y: 200 },
+                obstacles: [
+                    // Outer walls to form the pipe boundaries
+                    { x: 120, y: 120, width: 440, height: 20 }, // Top outer
+                    { x: 120, y: 260, width: 440, height: 20 }, // Bottom outer
+                    { x: 190, y: 180, width: 300, height: 40 }, // Center block (splits path into top/bottom)
+                    // Inner blocks to create the maze
+                    { x: 260, y: 140, width: 20, height: 40 }, // Blocks top path early
+                    { x: 400, y: 220, width: 20, height: 40 }, // Blocks bottom path late
+                    { x: 340, y: 180, width: 20, height: 40 }  // Central obstacle
+                ],
+                sandTraps: [], propellers: [],
+                glassTunnels: [
+                    { x: 120, y: 140, width: 440, height: 120 } // Glass covering the entire maze area
+                ]
+            }
+        ];
+
+        function togglePlayerMode() {
+            isTwoPlayer = !isTwoPlayer;
+            modeBtn.innerText = isTwoPlayer ? "Switch to 1P" : "Switch to 2P";
+            loadLevel(currentLevelIndex);
+        }
+
+        function updateUI() {
+            if (isTwoPlayer) {
+                strokesDisplay.innerHTML = `Strokes -> <span style="color:#3498db;">P1: ${balls[0].strokes}</span> | <span style="color:#e74c3c;">P2: ${balls[1].strokes}</span>`;
+                if (!balls[currentPlayer].finished) {
+                    turnDisplay.innerText = currentPlayer === 0 ? "Blue's Turn!" : "Red's Turn!";
+                    turnDisplay.style.color = currentPlayer === 0 ? "#3498db" : "#e74c3c";
+                }
+            } else {
+                strokesDisplay.innerHTML = `Strokes: <strong style="color: #3498db;">${balls[0].strokes}</strong>`;
+                turnDisplay.innerText = "Single Player";
+                turnDisplay.style.color = "#3498db";
+            }
+        }
+
+        function loadLevel(index) {
+            const lvl = levels[index];
+            
+            balls = [
+                { x: lvl.ballStart.x, y: lvl.ballStart.y - (isTwoPlayer ? 15 : 0), radius: 10, vx: 0, vy: 0, color: '#3498db', finished: false, strokes: 0 },
+                { x: lvl.ballStart.x, y: lvl.ballStart.y + (isTwoPlayer ? 15 : 0), radius: 10, vx: 0, vy: 0, color: '#e74c3c', finished: false, strokes: 0 }
+            ];
+            if (!isTwoPlayer) balls[1].finished = true; // Disable red ball in 1P mode
+            
+            currentPlayer = 0;
+            shotTaken = false;
+            
+            hole.x = lvl.holeStart.x; hole.y = lvl.holeStart.y;
+            obstacles = lvl.obstacles; sandTraps = lvl.sandTraps; propellers = lvl.propellers; glassTunnels = lvl.glassTunnels;
+            
+            sandGrains = [];
+            for (let sand of sandTraps) {
+                let area = sand.width * sand.height;
+                let grainCount = area / 80; 
+                for (let i = 0; i < grainCount; i++) {
+                    let lx = Math.random(); let ly = Math.random(); 
+                    let distFromCenterX = Math.abs(lx - 0.5) * 2; let distFromCenterY = Math.abs(ly - 0.5) * 2; 
+                    if (Math.random() > Math.max(distFromCenterX, distFromCenterY) + 0.2) continue; 
+                    sandGrains.push({ x: sand.x + lx * sand.width, y: sand.y + ly * sand.height, size: Math.random() * 1.5 + 0.5 });
+                }
+            }
+            
+            dustParticles = []; 
+            levelDisplay.innerText = `${index + 1} / ${levels.length}`;
+            isWin = false; isDragging = false; winScreen.classList.remove('active');
+            updateUI();
+        }
+
+        function nextLevel() {
+            currentLevelIndex++;
+            if (currentLevelIndex >= levels.length) currentLevelIndex = 0;
+            loadLevel(currentLevelIndex);
+        }
+
+        // Mouse Interactions
+        canvas.addEventListener('mousedown', (e) => {
+            if (isWin || shotTaken) return;
+            const rect = canvas.getBoundingClientRect();
+            const clickX = e.clientX - rect.left; const clickY = e.clientY - rect.top;
+            
+            let activeBall = balls[currentPlayer];
+            
+            if (!activeBall.finished && Math.hypot(clickX - activeBall.x, clickY - activeBall.y) < activeBall.radius * 3 && Math.abs(activeBall.vx) < 0.2 && Math.abs(activeBall.vy) < 0.2) {
+                isDragging = true; activeBall.vx = 0; activeBall.vy = 0;
+            }
+        });
+
+        canvas.addEventListener('mousemove', (e) => {
+            const rect = canvas.getBoundingClientRect();
+            const actualX = e.clientX - rect.left; const actualY = e.clientY - rect.top;
+            let activeBall = balls[currentPlayer];
+            
+            if (isDragging) {
+                const dx = actualX - activeBall.x; const dy = actualY - activeBall.y;
+                const dist = Math.hypot(dx, dy);
+                if (dist > maxDragDistance) {
+                    mouseX = activeBall.x + (dx / dist) * maxDragDistance; mouseY = activeBall.y + (dy / dist) * maxDragDistance;
+                } else { mouseX = actualX; mouseY = actualY; }
+            } else { mouseX = actualX; mouseY = actualY; }
+        });
+
+        canvas.addEventListener('mouseup', () => {
+            if (isDragging) {
+                isDragging = false;
+                let activeBall = balls[currentPlayer];
+                activeBall.vx = (activeBall.x - mouseX) * 0.13; 
+                activeBall.vy = (activeBall.y - mouseY) * 0.13;
+                activeBall.strokes++; 
+                shotTaken = true;
+                updateUI();
+            }
+        });
+
+        function resolveRectCollision(b, rectX, rectY, rectW, rectH, bounceFactor = 1) {
+            let testX = b.x; let testY = b.y;
+            if (b.x < rectX) testX = rectX; else if (b.x > rectX + rectW) testX = rectX + rectW;
+            if (b.y < rectY) testY = rectY; else if (b.y > rectY + rectH) testY = rectY + rectH;
+
+            let distX = b.x - testX; let distY = b.y - testY;
+            let distance = Math.sqrt(distX * distX + distY * distY);
+
+            if (distance <= b.radius && distance > 0) {
+                let nx = distX / distance; let ny = distY / distance;
+                let dotProduct = (b.vx * nx) + (b.vy * ny);
+                b.vx = (b.vx - 2 * dotProduct * nx) * bounceFactor;
+                b.vy = (b.vy - 2 * dotProduct * ny) * bounceFactor;
+
+                let penetration = b.radius - distance;
+                b.x += nx * penetration; b.y += ny * penetration;
+                return true;
+            }
+            return false;
+        }
+
+        function update() {
+            if (isWin) return;
+
+            // Turn Handling
+            if (shotTaken) {
+                let allStopped = true;
+                for (let b of balls) {
+                    if (!b.finished && (Math.abs(b.vx) >= 0.05 || Math.abs(b.vy) >= 0.05)) {
+                        allStopped = false; break;
+                    }
+                }
+                
+                if (allStopped) {
+                    shotTaken = false;
+                    if (isTwoPlayer) {
+                        let nextPlayer = 1 - currentPlayer;
+                        if (!balls[nextPlayer].finished) {
+                            currentPlayer = nextPlayer;
+                        }
+                    }
+                    updateUI();
+                }
+            }
+
+            // Sub-Stepping & Physics
+            let maxSpeed = 0;
+            for (let b of balls) {
+                if (!b.finished) maxSpeed = Math.max(maxSpeed, Math.abs(b.vx), Math.abs(b.vy));
+            }
+            let subSteps = Math.ceil(maxSpeed / 4) || 1; 
+
+            for (let i = 0; i < subSteps; i++) {
+                // Move Balls
+                for (let b of balls) {
+                    if (b.finished) continue;
+                    b.x += b.vx / subSteps; 
+                    b.y += b.vy / subSteps;
+
+                    // Edge Collisions
+                    if (b.x - b.radius < 0) { b.x = b.radius; b.vx *= -1; }
+                    if (b.x + b.radius > canvas.width) { b.x = canvas.width - b.radius; b.vx *= -1; }
+                    if (b.y - b.radius < 0) { b.y = b.radius; b.vy *= -1; }
+                    if (b.y + b.radius > canvas.height) { b.y = canvas.height - b.radius; b.vy *= -1; }
+
+                    // Wall Collisions
+                    for (let obs of obstacles) resolveRectCollision(b, obs.x, obs.y, obs.width, obs.height);
+
+                    // Propeller Physics
+                    for (let prop of propellers) {
+                        let dx = b.x - prop.x; let dy = b.y - prop.y;
+                        let cosA = Math.cos(-prop.angle); let sinA = Math.sin(-prop.angle);
+                        let localX = dx * cosA - dy * sinA; let localY = dx * sinA + dy * cosA;
+
+                        let halfL = prop.length / 2; let halfW = prop.width / 2;
+                        let testX = localX; let testY = localY;
+
+                        if (localX < -halfL) testX = -halfL; else if (localX > halfL) testX = halfL;
+                        if (localY < -halfW) testY = -halfW; else if (localY > halfW) testY = halfW;
+
+                        let distLocalX = localX - testX; let distLocalY = localY - testY;
+                        let distance = Math.sqrt(distLocalX * distLocalX + distLocalY * distLocalY);
+
+                        if (distance <= b.radius && distance > 0) {
+                            let nxLocal = distLocalX / distance; let nyLocal = distLocalY / distance;
+                            let nx = nxLocal * Math.cos(prop.angle) - nyLocal * Math.sin(prop.angle);
+                            let ny = nxLocal * Math.sin(prop.angle) + nyLocal * Math.cos(prop.angle);
+
+                            let pushForce = Math.abs(prop.speed) * 90;
+                            let dotProduct = (b.vx * nx) + (b.vy * ny);
+                            
+                            b.vx = b.vx - 2 * dotProduct * nx; b.vy = b.vy - 2 * dotProduct * ny;
+                            b.vx += nx * pushForce; b.vy += ny * pushForce;
+
+                            let penetration = b.radius - distance;
+                            b.x += nx * penetration; b.y += ny * penetration;
+                        }
+                    }
+                }
+
+                // Ball to Ball Collision (2 Player Mode)
+                if (isTwoPlayer && !balls[0].finished && !balls[1].finished) {
+                    let dx = balls[1].x - balls[0].x; let dy = balls[1].y - balls[0].y;
+                    let dist = Math.hypot(dx, dy);
+                    if (dist < balls[0].radius + balls[1].radius) {
+                        let nx = dx / dist; let ny = dy / dist;
+                        let dvx = balls[0].vx - balls[1].vx; let dvy = balls[0].vy - balls[1].vy;
+                        let p = (dvx * nx + dvy * ny);
+                        
+                        // Bounce only if moving towards each other
+                        if (p > 0) {
+                            balls[0].vx -= p * nx; balls[0].vy -= p * ny;
+                            balls[1].vx += p * nx; balls[1].vy += p * ny;
+                        }
+                        
+                        // Separate to prevent sticking
+                        let overlap = (balls[0].radius + balls[1].radius) - dist;
+                        balls[0].x -= (overlap / 2) * nx; balls[0].y -= (overlap / 2) * ny;
+                        balls[1].x += (overlap / 2) * nx; balls[1].y += (overlap / 2) * ny;
+                    }
+                }
+            }
+
+            // Propeller Rotation Update
+            for (let prop of propellers) prop.angle += prop.speed;
+
+            // Friction, Sand, and Hole Entry
+            let allFinished = true;
+            for (let b of balls) {
+                if (b.finished) continue;
+                allFinished = false;
+
+                let inSand = false;
+                for (let sand of sandTraps) {
+                    if (b.x > sand.x && b.x < sand.x + sand.width && b.y > sand.y && b.y < sand.y + sand.height) {
+                        inSand = true; break;
+                    }
+                }
+
+                b.vx *= (inSand ? sandFriction : normalFriction); 
+                b.vy *= (inSand ? sandFriction : normalFriction);
+
+                if (inSand && (Math.abs(b.vx) > 0.2 || Math.abs(b.vy) > 0.2)) {
+                    dustParticles.push({
+                        x: b.x + (Math.random() - 0.5) * 12, y: b.y + (Math.random() - 0.5) * 12,
+                        vx: (Math.random() - 0.5) * 1 - (b.vx * 0.1), vy: (Math.random() - 0.5) * 1 - (b.vy * 0.1),
+                        alpha: 1.0, size: Math.random() * 2 + 1
+                    });
+                }
+
+                if (Math.abs(b.vx) < 0.05) b.vx = 0;
+                if (Math.abs(b.vy) < 0.05) b.vy = 0;
+
+                // Hole Check
+                if (Math.hypot(b.x - hole.x, b.y - hole.y) < hole.radius) {
+                    b.vx = 0; b.vy = 0; b.x = hole.x; b.y = hole.y;
+                    b.finished = true;
+                }
+            }
+
+            // Dust Update
+            for (let i = dustParticles.length - 1; i >= 0; i--) {
+                let p = dustParticles[i];
+                p.x += p.vx; p.y += p.vy; p.alpha -= 0.05;
+                if (p.alpha <= 0) dustParticles.splice(i, 1);
+            }
+
+            // Win Condition
+            if (allFinished && !isWin) {
+                isWin = true;
+                setTimeout(() => {
+                    if (isTwoPlayer) {
+                        let winnerText = "";
+                        if (balls[0].strokes < balls[1].strokes) winnerText = "Blue Wins!";
+                        else if (balls[1].strokes < balls[0].strokes) winnerText = "Red Wins!";
+                        else winnerText = "It's a Tie!";
+                        winText.innerText = `Blue: ${balls[0].strokes} | Red: ${balls[1].strokes} \n ${winnerText}`;
+                    } else {
+                        winText.innerText = `You completed this level in ${balls[0].strokes} strokes.`;
+                    }
+
+                    if (currentLevelIndex === levels.length - 1) {
+                        winTitle.innerText = "Game Cleared!"; nextLevelBtn.innerText = "Play Again";
+                    } else {
+                        winTitle.innerText = "In the Hole!"; nextLevelBtn.innerText = "Next Level";
+                    }
+                    winScreen.classList.add('active');
+                }, 400);
+            }
+        }
+
+        function draw() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            // 1. Sand
+            for (let sand of sandTraps) {
+                ctx.fillStyle = '#E5C158'; ctx.fillRect(sand.x, sand.y, sand.width, sand.height);
+                ctx.strokeStyle = '#8B4513'; ctx.lineWidth = 2; ctx.strokeRect(sand.x, sand.y, sand.width, sand.height);
+            }
+            ctx.fillStyle = '#A88532';
+            for(let grain of sandGrains) {
+                ctx.beginPath(); ctx.arc(grain.x, grain.y, grain.size, 0, Math.PI * 2); ctx.fill();
+            }
+
+            // 2. Dust
+            for (let p of dustParticles) {
+                ctx.fillStyle = `rgba(240, 215, 140, ${p.alpha})`;
+                ctx.beginPath(); ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2); ctx.fill();
+            }
+
+            // 3. Walls / Obstacles
+            ctx.fillStyle = '#8B4513';
+            for (let obs of obstacles) {
+                ctx.fillRect(obs.x, obs.y, obs.width, obs.height);
+                ctx.strokeStyle = '#3e1f08'; ctx.lineWidth = 1; ctx.strokeRect(obs.x, obs.y, obs.width, obs.height);
+            }
+
+            // 4. Propellers
+            for (let prop of propellers) {
+                ctx.save(); ctx.translate(prop.x, prop.y); ctx.rotate(prop.angle);
+                ctx.fillStyle = '#D35400'; ctx.fillRect(-prop.length / 2, -prop.width / 2, prop.length, prop.width);
+                ctx.fillStyle = '#333'; ctx.beginPath(); ctx.arc(0, 0, prop.width / 1.5, 0, Math.PI * 2); ctx.fill();
+                ctx.restore();
+            }
+
+            // 5. Hole
+            ctx.beginPath(); ctx.arc(hole.x, hole.y, hole.radius, 0, Math.PI * 2);
+            ctx.fillStyle = hole.color; ctx.fill(); ctx.closePath();
+
+            // 6. Aim Line (Dynamic color based on current player)
+            let activeBall = balls[currentPlayer];
+            if (isDragging && !activeBall.finished) {
+                ctx.beginPath(); ctx.moveTo(mouseX, mouseY); ctx.lineTo(activeBall.x, activeBall.y);
+                ctx.strokeStyle = currentPlayer === 0 ? 'rgba(52, 152, 219, 0.8)' : 'rgba(231, 76, 60, 0.8)'; 
+                ctx.lineWidth = 4; ctx.stroke(); ctx.closePath();
+
+                const midX = (mouseX + activeBall.x) / 2, midY = (mouseY + activeBall.y) / 2;
+                const angle = Math.atan2(activeBall.y - mouseY, activeBall.x - mouseX);
+                ctx.beginPath(); ctx.moveTo(midX, midY);
+                ctx.lineTo(midX - 12 * Math.cos(angle - Math.PI / 6), midY - 12 * Math.sin(angle - Math.PI / 6));
+                ctx.lineTo(midX - 12 * Math.cos(angle + Math.PI / 6), midY - 12 * Math.sin(angle + Math.PI / 6));
+                ctx.fillStyle = currentPlayer === 0 ? '#3498db' : '#e74c3c'; ctx.fill(); ctx.closePath();
+            }
+
+            // 7. Balls
+            for (let b of balls) {
+                if (b.finished) continue;
+                ctx.beginPath(); ctx.arc(b.x, b.y, b.radius, 0, Math.PI * 2);
+                ctx.fillStyle = b.color; ctx.fill();
+                ctx.arc(b.x - 2, b.y - 2, b.radius / 3, 0, Math.PI * 2);
+                ctx.fillStyle = 'rgba(255,255,255,0.6)'; ctx.fill(); ctx.closePath();
+                
+                // Highlight active player
+                if (b === activeBall && !shotTaken) {
+                    ctx.beginPath(); ctx.arc(b.x, b.y, b.radius + 4, 0, Math.PI * 2);
+                    ctx.strokeStyle = 'rgba(255,255,255,0.8)'; ctx.lineWidth = 1.5; ctx.setLineDash([4, 4]);
+                    ctx.stroke(); ctx.setLineDash([]); ctx.closePath();
+                }
+            }
+
+            // 8. Glass Tunnels
+            for (let gt of glassTunnels) {
+                ctx.fillStyle = 'rgba(150, 200, 255, 0.35)'; 
+                ctx.fillRect(gt.x, gt.y, gt.width, gt.height);
+                
+                ctx.strokeStyle = 'rgba(255, 255, 255, 0.6)'; ctx.lineWidth = 2;
+                ctx.beginPath();
+                ctx.moveTo(gt.x, gt.y + 10); ctx.lineTo(gt.x + gt.width, gt.y + 10);
+                ctx.moveTo(gt.x, gt.y + gt.height - 10); ctx.lineTo(gt.x + gt.width, gt.y + gt.height - 10);
+                ctx.stroke();
+            }
+        }
+
+        function loop() { update(); draw(); requestAnimationFrame(loop); }
+
+        loadLevel(0); loop();
+    </script>
+</body>
+</html>
